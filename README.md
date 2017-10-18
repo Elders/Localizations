@@ -1,6 +1,6 @@
 # Simple Localization abstractions
 ### Supports
-- get by localization key and locale
+- get by localization key and locale - `client.Get("some-key", "some-locale-like-en");`
 
 ## PhraseApp C# implementation (read only)
 ### Using
