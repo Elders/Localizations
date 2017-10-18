@@ -90,9 +90,10 @@ namespace Localizations.PhraseApp
                     }
 
                     var cacheForSpecificLocale = new ConcurrentDictionary<string, TranslationModel>();
+                    var lastModified = GetLastModifiedFromHeadersAsFileTimeUtc(response);
                     foreach (var translation in response.Data)
                     {
-                        var model = new TranslationModel(translation.Key, translation.Value, locale.Name);
+                        var model = new TranslationModel(translation.Key, translation.Value, locale.Name, lastModified);
                         cacheForSpecificLocale.AddOrUpdate(translation.Key, model, (k, v) => model);
                     }
 
@@ -142,11 +143,27 @@ namespace Localizations.PhraseApp
 
         string GetEtagValueFromHeaders(IRestResponse response)
         {
-            var etag = response.Headers.Where(x => x.Name == "ETag").SingleOrDefault();
-            if (ReferenceEquals(null, etag) == false)
-                return etag.Value.ToString();
+            var etagHeader = response.Headers.Where(x => x.Name == "ETag").SingleOrDefault();
+            if (ReferenceEquals(null, etagHeader) == false)
+                return etagHeader.Value.ToString();
 
             return string.Empty;
+        }
+
+        long GetLastModifiedFromHeadersAsFileTimeUtc(IRestResponse response)
+        {
+            var lastModifiedHeader = response.Headers.Where(x => x.Name == "Last-Modified").SingleOrDefault();
+
+            if (ReferenceEquals(null, lastModifiedHeader) == false)
+            {
+                DateTime d;
+                if (DateTime.TryParse(lastModifiedHeader.Value.ToString(), out d) == true)
+                {
+                    return d.ToFileTimeUtc();
+                }
+            }
+
+            return 0;
         }
 
         IRestRequest CreateRestRequest(string resource, Method method)
