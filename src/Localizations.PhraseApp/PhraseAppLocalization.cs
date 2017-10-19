@@ -28,6 +28,10 @@ namespace Localizations.PhraseApp
 
         string localeEtag;
 
+        public bool StrictLocale { get; private set; }
+
+        public string DefaultLocale { get; private set; }
+
         public PhraseAppLocalization(string accessToken, string projectId, TimeSpan ttl)
         {
             if (string.IsNullOrEmpty(accessToken) == true) throw new ArgumentNullException(nameof(accessToken));
@@ -65,7 +69,29 @@ namespace Localizations.PhraseApp
                         return new SafeGet<TranslationModel>(translation);
                 }
             }
+
+            if (StrictLocale == false && locale.Length > 2)
+            {
+                return Get(key, locale.Substring(0, 2));
+            }
+
+            if (string.IsNullOrEmpty(DefaultLocale) == false && DefaultLocale.Equals(locale, StringComparison.OrdinalIgnoreCase) == false)
+                return Get(key, DefaultLocale);
+
             return SafeGet<TranslationModel>.NotFound;
+        }
+
+
+        public ILocalization UseStrictLocale(bool value)
+        {
+            StrictLocale = value;
+            return this;
+        }
+
+        public ILocalization UseDefaultLocale(string locale)
+        {
+            DefaultLocale = locale;
+            return this;
         }
 
         void CacheTranslations()

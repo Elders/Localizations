@@ -11,10 +11,10 @@ namespace Localizations.Playground
             LogStartup.Boot();
             var accessToken = "";
             var projectId = "";
-            ILocalization client = new PhraseAppLocalization(accessToken, projectId, TimeSpan.FromSeconds(2));
+            ILocalization client = new PhraseAppLocalization(accessToken, projectId, TimeSpan.FromSeconds(2)).UseDefaultLocale("en").UseStrictLocale(false);
 
-            var translation = client.Get("home", "bg");
-            translation = client.Get("home", "bg");
+            var translation = client.Get("help_url", "bg");
+            translation = client.Get("help_url", "bg-BG");
             System.Console.ReadLine();
         }
     }
