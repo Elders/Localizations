@@ -81,13 +81,22 @@ namespace Localizations.PhraseApp
             return SafeGet<TranslationModel>.NotFound;
         }
 
-
+        /// <summary>
+        /// Specifies if fall back to two letter part of locale is allowed e.g en-GB would fall back to en
+        /// </summary>
+        /// <param name="value"></param>
+        /// <returns></returns>
         public ILocalization UseStrictLocale(bool value)
         {
             StrictLocale = value;
             return this;
         }
 
+        /// <summary>
+        /// Specifies default fall back locale
+        /// </summary>
+        /// <param name="locale"></param>
+        /// <returns></returns>
         public ILocalization UseDefaultLocale(string locale)
         {
             DefaultLocale = locale;
