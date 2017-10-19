@@ -86,7 +86,7 @@ namespace Localizations.PhraseApp
         /// </summary>
         /// <param name="value"></param>
         /// <returns></returns>
-        public ILocalization UseStrictLocale(bool value)
+        public PhraseAppLocalization UseStrictLocale(bool value)
         {
             StrictLocale = value;
             return this;
@@ -97,7 +97,7 @@ namespace Localizations.PhraseApp
         /// </summary>
         /// <param name="locale"></param>
         /// <returns></returns>
-        public ILocalization UseDefaultLocale(string locale)
+        public PhraseAppLocalization UseDefaultLocale(string locale)
         {
             DefaultLocale = locale;
             return this;
