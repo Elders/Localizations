@@ -13,8 +13,8 @@ namespace Localizations.Playground
             var projectId = "";
             ILocalization client = new PhraseAppLocalization(accessToken, projectId, TimeSpan.FromSeconds(2)).UseDefaultLocale("en").UseStrictLocale(false);
 
-            var translation = client.Get("help_url", "bg");
-            translation = client.Get("help_url", "bg-BG");
+            var translation = client.Get("help_url", "bg").Result(new TranslationModel("help_url", "none", "bg"));
+            translation = client.Get("help_url", "bg-BG").Result(new TranslationModel("help_url", "none", "bg"));
             System.Console.ReadLine();
         }
     }
