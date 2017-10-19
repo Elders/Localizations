@@ -1,3 +1,6 @@
+#### 0.1.6 - 19.10.2017
+* Updates MissingTranslation Translation Model property to method
+
 #### 0.1.5 - 19.10.2017
 * Adds MissingTranslation Translation Model property
 
