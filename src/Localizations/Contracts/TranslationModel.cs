@@ -32,5 +32,7 @@ namespace Localizations.Contracts
         public string Locale { get; private set; }
 
         public long LastModified { get; private set; }
+
+        public static TranslationModel MissingTranslation { get { return new TranslationModel("missing-translation", "missing-translation", "missing-translation"); } }
     }
 }

@@ -1,3 +1,6 @@
+#### 0.1.5 - 19.10.2017
+* Adds MissingTranslation Translation Model property
+
 #### 0.1.4 - 19.10.2017
 * Changes safe get result to method with ability to specify default value
 
