@@ -1,3 +1,6 @@
+#### 0.1.8 - 20.10.2017
+* Adds localization extensions
+
 #### 0.1.7 - 20.10.2017
 * Adds localization extensions
 
