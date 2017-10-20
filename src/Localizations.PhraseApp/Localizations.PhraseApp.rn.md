@@ -1,3 +1,6 @@
+#### 0.1.5 - 19.10.2017
+* Updates to latest ILocalization
+
 #### 0.1.4 - 19.10.2017
 * Updates to latest ILocalization
 

@@ -38,6 +38,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Contracts\ILocalization.cs" />
+    <Compile Include="Contracts\LocalizationExtensions.cs" />
     <Compile Include="Contracts\SafeGet.cs" />
     <Compile Include="Contracts\TranslationModel.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
