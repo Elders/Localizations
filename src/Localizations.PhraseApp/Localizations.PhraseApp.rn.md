@@ -1,3 +1,6 @@
+#### 0.1.6 - 08.12.2017
+* Improves locale fallback -> zh-hk-hans to zh-hk to zh when allowed
+
 #### 0.1.5 - 19.10.2017
 * Updates to latest ILocalization
 

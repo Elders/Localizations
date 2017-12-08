@@ -51,6 +51,14 @@ namespace Localizations.PhraseApp
             CacheTranslations();
         }
 
+        /// <summary>
+        /// Translations based on key and locale
+        /// Depending of configuration can fallback and try with less restrictive locales e.g zh-hk-hans to zh-hk to zh
+        /// Depending of configuration can fallback specified DefaultLocale
+        /// </summary>
+        /// <param name="key"></param>
+        /// <param name="locale"></param>
+        /// <returns>Returns translation by key and locale</returns>
         public SafeGet<TranslationModel> Get(string key, string locale)
         {
             if (ShouldCheckForChanges() == true)
@@ -70,9 +78,12 @@ namespace Localizations.PhraseApp
                 }
             }
 
-            if (StrictLocale == false && locale.Length > 2)
+            // separator can be _ or -
+            var replaced = locale.Replace("_", "-");
+            if (StrictLocale == false && replaced.Contains("-") == true)
             {
-                return Get(key, locale.Substring(0, 2));
+                var next = replaced.Remove(replaced.IndexOf('-'));
+                return Get(key, next);
             }
 
             if (string.IsNullOrEmpty(DefaultLocale) == false && DefaultLocale.Equals(locale, StringComparison.OrdinalIgnoreCase) == false)
