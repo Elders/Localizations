@@ -82,7 +82,7 @@ namespace Localizations.PhraseApp
             var replaced = locale.Replace("_", "-");
             if (StrictLocale == false && replaced.Contains("-") == true)
             {
-                var next = replaced.Remove(replaced.IndexOf('-'));
+                var next = replaced.Remove(replaced.LastIndexOf('-'));
                 return Get(key, next);
             }
 

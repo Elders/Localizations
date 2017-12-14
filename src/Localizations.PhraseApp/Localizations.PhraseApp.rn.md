@@ -1,3 +1,6 @@
+#### 0.1.7 - 14.12.2017
+* Fixes issue with locale fallback
+
 #### 0.1.6 - 08.12.2017
 * Improves locale fallback -> zh-hk-hans to zh-hk to zh when allowed
 
