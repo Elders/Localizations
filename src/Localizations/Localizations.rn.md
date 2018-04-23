@@ -1,3 +1,6 @@
+#### 0.1.9 - 23.04.2018
+* Targets net45
+
 #### 0.1.8 - 20.10.2017
 * Adds localization extensions
 

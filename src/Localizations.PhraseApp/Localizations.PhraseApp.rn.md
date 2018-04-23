@@ -1,3 +1,6 @@
+#### 0.1.8 - 23.04.2018
+* Targets net45
+
 #### 0.1.7 - 14.12.2017
 * Fixes issue with locale fallback
 

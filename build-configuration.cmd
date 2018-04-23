@@ -13,4 +13,3 @@ SET SUMMARY_PHRASEAPP="PhraseApp Localization"
 SET DESCRIPTION_PHRASEAPP="PhraseApp Localization"
 
 %FAKE% %NYX% appName=Localizations                       appSummary=%SUMMARY% appDescription=%DESCRIPTION% nugetserver=%NUGET_SOURCE_DEV_PUSH% nugetkey=%RELEASE_NUGETKEY%
-%FAKE% %NYX% appName=Localizations.PhraseApp             appSummary=%SUMMARY_PHRASEAPP% appDescription=%DESCRIPTION_PHRASEAPP% nugetserver=%NUGET_SOURCE_DEV_PUSH% nugetkey=%RELEASE_NUGETKEY%
