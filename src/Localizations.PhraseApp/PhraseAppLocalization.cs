@@ -160,14 +160,10 @@ namespace Localizations.PhraseApp
             var response = client.Execute<List<PhraseAppLocaleModel>>(CreateRestRequest(resource, Method.GET, localeEtag));
 
             if (ReferenceEquals(null, response) == true)
-            {
                 log.Warn(() => $"Unable to load locales for project {projectId}");
-            }
 
             if (response.ResponseStatus != ResponseStatus.Completed)
-            {
                 log.Warn(() => $"Unable to load locales for project {projectId}. Response status is {response.ResponseStatus}. Error Message: {response.ErrorMessage}");
-            }
 
             if (response.StatusCode == System.Net.HttpStatusCode.NotModified)
                 return;
@@ -175,6 +171,12 @@ namespace Localizations.PhraseApp
             localeEtag = GetEtagValueFromHeaders(response);
             foreach (var locale in response.Data)
             {
+                if (string.IsNullOrEmpty(locale.Name))
+                {
+                    log.Error($"Missing locale name from resource {resource}");
+                    continue;
+                }
+
                 localeCache.AddOrUpdate(locale.Name, locale, (k, v) => locale);
             }
         }

@@ -1,3 +1,6 @@
+#### 0.1.9 - 18.05.2018
+* Logs an error when locale name is missing
+
 #### 0.1.8 - 23.04.2018
 * Targets net45
 
