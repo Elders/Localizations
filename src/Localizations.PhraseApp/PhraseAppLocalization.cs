@@ -173,7 +173,7 @@ namespace Localizations.PhraseApp
             {
                 if (string.IsNullOrEmpty(locale.Name))
                 {
-                    log.Error($"Missing locale name from resource {resource}");
+                    log.Error($"Missing locale name from resource {resource} with locale {locale}");
                     continue;
                 }
 

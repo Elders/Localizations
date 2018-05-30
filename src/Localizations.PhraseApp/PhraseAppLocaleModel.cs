@@ -24,5 +24,10 @@ namespace Localizations.PhraseApp
         public DateTime Created_at { get; set; }
 
         public DateTime Updated_at { get; set; }
+
+        public override string ToString()
+        {
+            return $"Id: {Id}, Name: {Name}, Code: {Code}, Default: {Default}, Main: {Main}, Rtl: {Rtl}";
+        }
     }
 }
