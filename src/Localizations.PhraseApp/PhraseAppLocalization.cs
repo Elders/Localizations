@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Linq;
 using Localizations.Contracts;
 using Localizations.PhraseApp.Logging;
@@ -157,28 +158,67 @@ namespace Localizations.PhraseApp
         void CacheLocales()
         {
             var resource = $"projects/{projectId}/locales";
-            var response = client.Execute<List<PhraseAppLocaleModel>>(CreateRestRequest(resource, Method.GET, localeEtag));
+            var request = CreateRestRequest(resource, Method.GET, localeEtag);
+            string requestLog = $"{Enum.GetName(typeof(Method), request.Method)} - {client.BaseUrl}{request.Resource}{Environment.NewLine}";
+
+            var response = client.Execute<List<PhraseAppLocaleModel>>(request);
 
             if (ReferenceEquals(null, response) == true)
                 log.Warn(() => $"Unable to load locales for project {projectId}");
 
-            if (response.ResponseStatus != ResponseStatus.Completed)
-                log.Warn(() => $"Unable to load locales for project {projectId}. Response status is {response.ResponseStatus}. Error Message: {response.ErrorMessage}");
+            CalculateNextRequestTimestamp(response);
 
-            if (response.StatusCode == System.Net.HttpStatusCode.NotModified)
-                return;
-
-            localeEtag = GetEtagValueFromHeaders(response);
-            foreach (var locale in response.Data)
+            if (response.StatusCode == System.Net.HttpStatusCode.OK)
             {
-                if (string.IsNullOrEmpty(locale.Name))
+                localeEtag = GetEtagValueFromHeaders(response);
+                foreach (var locale in response.Data)
                 {
-                    log.Error($"Missing locale name from resource {resource} with locale {locale}");
-                    continue;
+                    localeCache.AddOrUpdate(locale.Name, locale, (k, v) => locale);
                 }
-
-                localeCache.AddOrUpdate(locale.Name, locale, (k, v) => locale);
             }
+            else
+            {
+                log.Warn(() => $"Unable to load locales for project {projectId}. Response status is {response.ResponseStatus}. Error Message: {response.ErrorMessage}");
+            }
+        }
+
+        T GetHeaderValue<T>(IRestResponse response, string headerName, T defaultValue = default(T))
+        {
+            var headerParam = response.Headers.Where(header => header.Name == headerName).SingleOrDefault();
+            if (ReferenceEquals(null, headerParam) == false)
+            {
+                object value = headerParam.Value;
+                var converter = TypeDescriptor.GetConverter(typeof(T));
+                if (converter.IsValid(value))
+                {
+                    T converted = (T)converter.ConvertFrom(value);
+                    return converted;
+                }
+            }
+
+            if (defaultValue.Equals(default(T)) == false)
+                return defaultValue;
+
+            return default(T);
+        }
+
+        void CalculateNextRequestTimestamp(IRestResponse response)
+        {
+            int remainingRequests = GetHeaderValue<int>(response, "X-Rate-Limit-Remaining", 500);
+
+            if (remainingRequests == 0)
+            {
+                log.Warn("[PhraseApp] Request limit exceeded (X-Rate-Limit-Remaining). https://phraseapp.com/docs/api/v2/#rate-limit");
+
+                long headerTimeoutParameter = GetHeaderValue<long>(response, "X-Rate-Limit-Reset");
+                if (headerTimeoutParameter > 0)
+                    nextCheckForChanges = ConvertTimestampFromParameterToDateTime(headerTimeoutParameter);
+            }
+        }
+
+        private static DateTime ConvertTimestampFromParameterToDateTime(long epoch)
+        {
+            return new DateTime(1970, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc).AddSeconds(epoch);
         }
 
         bool ShouldCheckForChanges()
@@ -239,6 +279,30 @@ namespace Localizations.PhraseApp
             }
 
             return request;
+        }
+
+        void LogRequest(IRestRequest request, string requestLog)
+        {
+            if (log.IsDebugEnabled())
+            {
+                requestLog += $"Parameters:{Environment.NewLine}" + string.Join($"{Environment.NewLine}", request.Parameters.Select(par => par.ToString()));
+                log.Debug(requestLog);
+            }
+        }
+
+        void LogResponse<T>(IRestResponse<T> response, string requestLog)
+        {
+            if (ReferenceEquals(null, response.ErrorException))
+            {
+                if (response.HasClientError() && log.IsWarnEnabled())
+                    log.WarnException($"{requestLog} => {response.StatusCode}", new Exception(response.Content));
+                else
+                    log.Debug(() => $"{requestLog} => {response.StatusCode} {Environment.NewLine} {response.Content}");
+            }
+            else
+            {
+                log.ErrorException(requestLog, response.ErrorException);
+            }
         }
     }
 }
