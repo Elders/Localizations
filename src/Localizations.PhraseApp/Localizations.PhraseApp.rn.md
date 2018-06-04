@@ -1,3 +1,6 @@
+#### 0.1.11 - 18.05.2018
+* Adds schecks for phrase app limits https://phraseapp.com/docs/api/v2/#rate-limit
+
 #### 0.1.10 - 30.05.2018
 * Improves the logs when locale name is missing
 
