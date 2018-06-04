@@ -54,6 +54,7 @@
     <Compile Include="PhraseAppLocalization.cs" />
     <Compile Include="PhraseAppSourceLocaleModel.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="RestClientExtensions.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
