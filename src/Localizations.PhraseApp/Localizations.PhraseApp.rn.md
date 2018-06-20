@@ -1,3 +1,6 @@
+#### 0.1.12 - 20.06.2018
+* Adds the ability to get all available translations for a specific locale
+
 #### 0.1.11 - 18.05.2018
 * Adds schecks for phrase app limits https://phraseapp.com/docs/api/v2/#rate-limit
 

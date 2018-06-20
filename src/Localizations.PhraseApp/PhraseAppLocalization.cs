@@ -94,6 +94,41 @@ namespace Localizations.PhraseApp
         }
 
         /// <summary>
+        /// Translations based on locale
+        /// Depending of configuration can fallback and try with less restrictive locales e.g zh-hk-hans to zh-hk to zh
+        /// Depending of configuration can fallback specified DefaultLocale
+        /// </summary>
+        /// <param name="locale"></param>
+        /// <returns>Returns all the translations by locale</returns>
+        public List<SafeGet<TranslationModel>> GetAll(string locale)
+        {
+            if (ShouldCheckForChanges() == true)
+            {
+                CacheLocales();
+                CacheTranslations();
+            }
+
+            ConcurrentDictionary<string, TranslationModel> translationsForLocale;
+            if (translationCachePerLocale.TryGetValue(locale, out translationsForLocale))
+            {
+                return new List<SafeGet<TranslationModel>>(translationsForLocale.Values.Select(x => new SafeGet<TranslationModel>(x)));
+            }
+
+            // separator can be _ or -
+            var replaced = locale.Replace("_", "-");
+            if (StrictLocale == false && replaced.Contains("-") == true)
+            {
+                var next = replaced.Remove(replaced.LastIndexOf('-'));
+                return GetAll(next);
+            }
+
+            if (string.IsNullOrEmpty(DefaultLocale) == false && DefaultLocale.Equals(locale, StringComparison.OrdinalIgnoreCase) == false)
+                return GetAll(DefaultLocale);
+
+            return new List<SafeGet<TranslationModel>>();
+        }
+
+        /// <summary>
         /// Specifies if fall back to two letter part of locale is allowed e.g en-GB would fall back to en
         /// </summary>
         /// <param name="value"></param>
