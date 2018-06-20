@@ -1,4 +1,7 @@
-﻿namespace Localizations.Contracts
+﻿using System.Collections.Generic;
+using System.Linq;
+
+namespace Localizations.Contracts
 {
     public static class LocalizationExtensions
     {
@@ -20,6 +23,16 @@
                 return translation.Result().Value;
 
             return $"missing-key-'{key}'-locale-'{locale}'";
+        }
+
+        public static Dictionary<string, string> GetAll(this ILocalization localization, string locale)
+        {
+            var translations = localization.GetAll(locale);
+
+            if (ReferenceEquals(null, translations))
+                return new Dictionary<string, string>();
+
+            return translations.ToDictionary(key => key.Result().Key, value => value.Result().Value);
         }
     }
 }

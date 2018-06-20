@@ -1,3 +1,6 @@
+#### 0.1.10 - 20.06.2018
+* Adds the ability to get all available translations for a specific locale
+
 #### 0.1.9 - 23.04.2018
 * Targets net45
 
