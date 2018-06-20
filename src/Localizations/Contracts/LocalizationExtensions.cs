@@ -25,7 +25,7 @@ namespace Localizations.Contracts
             return $"missing-key-'{key}'-locale-'{locale}'";
         }
 
-        public static Dictionary<string, string> GetAll(this ILocalization localization, string locale)
+        public static Dictionary<string, string> GetAllValues(this ILocalization localization, string locale)
         {
             var translations = localization.GetAll(locale);
 

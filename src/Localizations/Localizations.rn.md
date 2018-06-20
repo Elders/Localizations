@@ -1,3 +1,6 @@
+#### 0.1.11 - 20.06.2018
+* Rename extention method from GetAll to GetAllValues
+
 #### 0.1.10 - 20.06.2018
 * Adds the ability to get all available translations for a specific locale
 
