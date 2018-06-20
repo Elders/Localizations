@@ -1,3 +1,6 @@
+#### 0.1.13 - 20.06.2018
+* Update Localizations package to version 0.1.11
+
 #### 0.1.12 - 20.06.2018
 * Adds the ability to get all available translations for a specific locale
 
