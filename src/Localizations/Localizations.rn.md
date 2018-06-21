@@ -1,3 +1,6 @@
+#### 0.1.12 - 21.06.2018
+* Added support for Accept-Language header
+
 #### 0.1.11 - 20.06.2018
 * Rename extention method from GetAll to GetAllValues
 

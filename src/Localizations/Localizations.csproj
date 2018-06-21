@@ -38,6 +38,7 @@
     <Reference Include="Microsoft.CSharp" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Contracts\AcceptLanguageHeaderParser.cs" />
     <Compile Include="Contracts\ILocalization.cs" />
     <Compile Include="Contracts\LocalizationExtensions.cs" />
     <Compile Include="Contracts\SafeGet.cs" />
