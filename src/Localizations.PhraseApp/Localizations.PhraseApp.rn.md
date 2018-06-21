@@ -1,3 +1,6 @@
+#### 0.1.15 - 21.06.2018
+* Update Localizations package to version 0.1.13
+
 #### 0.1.14 - 21.06.2018
 * Update Localizations package to version 0.1.12
 
