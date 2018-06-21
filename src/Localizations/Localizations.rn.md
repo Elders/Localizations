@@ -1,3 +1,6 @@
+#### 0.1.13 - 21.06.2018
+* Accept-Language header parser is case insensitive
+
 #### 0.1.12 - 21.06.2018
 * Added support for Accept-Language header
 

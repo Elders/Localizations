@@ -11,7 +11,7 @@ namespace Localizations.Contracts
 
         public AcceptLanguageHeader(string header)
         {
-            var regex = new Regex(@"(?'locale'[a-z]{1,8}(-[a-z]{1,8})?)\s*(;\s*q\s*=\s*(?'quality'1|0\.[0-9]+))?");
+            var regex = new Regex(@"(?'locale'[a-z]{1,8}(-[a-z]{1,8})?)\s*(;\s*q\s*=\s*(?'quality'1|0\.[0-9]+))?", RegexOptions.IgnoreCase);
 
             var matchCollection = regex.Matches(header);
 
@@ -36,7 +36,7 @@ namespace Localizations.Contracts
                 }
             }
 
-            this.Locales = locales.OrderBy(x => x.Value).Select(x => x.Key).ToList().AsReadOnly();
+            Locales = locales.OrderByDescending(x => x.Value).Select(x => x.Key).ToList().AsReadOnly();
         }
     }
 }
