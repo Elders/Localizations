@@ -1,3 +1,7 @@
+#### 0.1.14 - 10.07.2018
+* Fixes missing return when calling TryGetAllValues
+* Overrides to string for better visibility
+
 #### 0.1.13 - 21.06.2018
 * Accept-Language header parser is case insensitive
 
