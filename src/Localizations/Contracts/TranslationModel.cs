@@ -37,5 +37,10 @@ namespace Localizations.Contracts
         {
             return new TranslationModel("missing-translation-" + key, "missing-translation-" + key, "missing-translation-" + key);
         }
+
+        public override string ToString()
+        {
+            return $"Key: '{Key}' Value: '{Value}' Locale: '{Locale}' LastModified: '{LastModified}'";
+        }
     }
 }

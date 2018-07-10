@@ -29,5 +29,10 @@ namespace Localizations.Contracts
         }
 
         public static SafeGet<T> NotFound { get { return new SafeGet<T>(); } }
+
+        public override string ToString()
+        {
+            return $"Found: '{Found}', Result: '{Result()}'";
+        }
     }
 }
