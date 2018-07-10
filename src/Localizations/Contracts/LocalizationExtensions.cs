@@ -117,7 +117,7 @@ namespace Localizations.Contracts
         }
 
         /// <summary>
-        /// Try to get the transalations based on <paramref name="header"./>.
+        /// Try to get the transalations based on <paramref name="header"/>.
         /// </summary>
         /// <remarks>
         /// Depending on the implementation of <see cref name="ILocalization"/> we might return translations based on a default locale if we can.
@@ -138,7 +138,7 @@ namespace Localizations.Contracts
         }
 
         /// <summary>
-        /// Try to get the transalations based on <paramref name="locale"./>.
+        /// Try to get the transalations based on <paramref name="locale"/>.
         /// </summary>
         /// <remarks>
         /// Depending on the implementation of <see cref name="ILocalization"/> we might return translations based on a default locale if we can.
@@ -150,7 +150,7 @@ namespace Localizations.Contracts
             var result = new List<SafeGet<TranslationModel>>();
 
             if (TryGetAllValues(localization, locale, out result) == true)
-                result.ToDictionary(key => key.Result().Key, value => value.Result().Value);
+                return result.ToDictionary(key => key.Result().Key, value => value.Result().Value);
 
             return new Dictionary<string, string>();
         }
