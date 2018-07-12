@@ -1,3 +1,7 @@
+#### 0.1.15 - 10.07.2018
+* Fixes supports for Accept-Language header locale quality
+* Exposes new methods for work with Accept-Language header
+
 #### 0.1.14 - 10.07.2018
 * Fixes missing return when calling TryGetAllValues
 * Overrides to string for better visibility

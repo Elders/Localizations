@@ -87,7 +87,55 @@ namespace Localizations.PhraseApp
                 return Get(key, next);
             }
 
+            // Checks for default locale and if it is different the the locale we have already tried
             if (string.IsNullOrEmpty(DefaultLocale) == false && DefaultLocale.Equals(locale, StringComparison.OrdinalIgnoreCase) == false)
+                return Get(key, DefaultLocale);
+
+            return SafeGet<TranslationModel>.NotFound;
+        }
+
+        /// <summary>
+        /// Translations based on key and locale
+        /// Depending of configuration can fallback and try with less restrictive locales e.g zh-hk-hans to zh-hk to zh
+        /// Depending of configuration can fallback specified DefaultLocale
+        /// </summary>
+        /// <param name="key">The translation key.</param>
+        /// <param name="header">The Accept-Language header that will be used to get the translation.</param>
+        /// <returns>The resulting translation for this <paramref name="header"/>. If no translation is not found for this <paramref name="header"/> the result will be "missing-key-'{<paramref name="key"/>}'".</returns>
+        public SafeGet<TranslationModel> Get(string key, AcceptLanguageHeader header)
+        {
+            if (ReferenceEquals(null, header) == true) throw new ArgumentNullException(nameof(header));
+
+            foreach (var locale in header.Locales)
+            {
+                if (ShouldCheckForChanges() == true)
+                {
+                    CacheLocales();
+                    CacheTranslations();
+                }
+
+                ConcurrentDictionary<string, TranslationModel> translationsForLocale;
+                if (translationCachePerLocale.TryGetValue(locale, out translationsForLocale))
+                {
+                    TranslationModel translation;
+                    if (translationsForLocale.TryGetValue(key, out translation) == true)
+                    {
+                        if (ReferenceEquals(null, translation) == false)
+                            return new SafeGet<TranslationModel>(translation);
+                    }
+                }
+
+                // separator can be _ or -
+                var replaced = locale.Replace("_", "-");
+                if (StrictLocale == false && replaced.Contains("-") == true)
+                {
+                    var next = replaced.Remove(replaced.LastIndexOf('-'));
+                    return Get(key, next);
+                }
+            }
+
+            // Checks for default locale and if it is different the the locale we have already tried
+            if (string.IsNullOrEmpty(DefaultLocale) == false && header.Locales.Any(x => x.Equals(DefaultLocale, StringComparison.OrdinalIgnoreCase)) == false)
                 return Get(key, DefaultLocale);
 
             return SafeGet<TranslationModel>.NotFound;
@@ -122,7 +170,49 @@ namespace Localizations.PhraseApp
                 return GetAll(next);
             }
 
+            // Checks for default locale and if it is different the the locale we have already tried
             if (string.IsNullOrEmpty(DefaultLocale) == false && DefaultLocale.Equals(locale, StringComparison.OrdinalIgnoreCase) == false)
+                return GetAll(DefaultLocale);
+
+            return new List<SafeGet<TranslationModel>>();
+        }
+
+        /// <summary>
+        /// Translations based on locale
+        /// Depending of configuration can fallback and try with less restrictive locales e.g zh-hk-hans to zh-hk to zh
+        /// Depending of configuration can fallback specified DefaultLocale
+        /// </summary>
+        /// <param name="header">>The Accept-Language header that will be used to get the translation.</param>
+        /// <returns>The resulting translations for this <paramref name="header"/>. If no translations are not found for this <paramref name="header"/> the collection will be empty.</returns>
+        public List<SafeGet<TranslationModel>> GetAll(AcceptLanguageHeader header)
+        {
+            if (ReferenceEquals(null, header) == true) throw new ArgumentNullException(nameof(header));
+
+            foreach (var locale in header.Locales)
+            {
+                if (ShouldCheckForChanges() == true)
+                {
+                    CacheLocales();
+                    CacheTranslations();
+                }
+
+                ConcurrentDictionary<string, TranslationModel> translationsForLocale;
+                if (translationCachePerLocale.TryGetValue(locale, out translationsForLocale))
+                {
+                    return new List<SafeGet<TranslationModel>>(translationsForLocale.Values.Select(x => new SafeGet<TranslationModel>(x)));
+                }
+
+                // separator can be _ or -
+                var replaced = locale.Replace("_", "-");
+                if (StrictLocale == false && replaced.Contains("-") == true)
+                {
+                    var next = replaced.Remove(replaced.LastIndexOf('-'));
+                    return GetAll(next);
+                }
+            }
+
+            // Checks for default locale and if it is different the the locale we have already tried
+            if (string.IsNullOrEmpty(DefaultLocale) == false && header.Locales.Any(x => x.Equals(DefaultLocale, StringComparison.OrdinalIgnoreCase)) == false)
                 return GetAll(DefaultLocale);
 
             return new List<SafeGet<TranslationModel>>();
