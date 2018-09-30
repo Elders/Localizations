@@ -1,3 +1,6 @@
+#### 1.0.0-beta0003 - 01.10.2018
+* Testing builds using correct ghtoken
+
 #### 1.0.0-beta0002 - 30.09.2018
 * Testing builds
 
