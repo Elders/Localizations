@@ -53,6 +53,12 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <None Remove="gitversion.yml" />
+    <None Remove="Localizations.PhraseApp.nuspec" />
+    <None Remove="Localizations.PhraseApp.rn.md" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="LibLog" Version="5.0.2">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
