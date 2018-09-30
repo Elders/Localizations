@@ -1,3 +1,6 @@
+#### 1.0.0-beta0001 - 30.09.2018
+* Initial release with netstandard 2.0
+
 #### 0.1.17 - 12.07.2018
 * Update Localizations package to version 0.1.15
 

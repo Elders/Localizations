@@ -1,3 +1,6 @@
+#### 1.0.0-beta0001 - 30.09.2018
+* Initial release with netstandard 2.0
+
 #### 0.1.15 - 10.07.2018
 * Fixes supports for Accept-Language header locale quality
 * Exposes new methods for work with Accept-Language header
