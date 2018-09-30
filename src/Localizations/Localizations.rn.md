@@ -1,3 +1,6 @@
+#### 1.0.0-beta0002 - 30.09.2018
+* Testing builds
+
 #### 1.0.0-beta0001 - 30.09.2018
 * Initial release with netstandard 2.0
 
