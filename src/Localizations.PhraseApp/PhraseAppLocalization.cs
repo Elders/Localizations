@@ -400,29 +400,5 @@ namespace Localizations.PhraseApp
 
             return request;
         }
-
-        void LogRequest(IRestRequest request, string requestLog)
-        {
-            if (log.IsDebugEnabled())
-            {
-                requestLog += $"Parameters:{Environment.NewLine}" + string.Join($"{Environment.NewLine}", request.Parameters.Select(par => par.ToString()));
-                log.Debug(requestLog);
-            }
-        }
-
-        void LogResponse<T>(IRestResponse<T> response, string requestLog)
-        {
-            if (response.ErrorException is null)
-            {
-                if (response.HasClientError() && log.IsWarnEnabled())
-                    log.WarnException($"{requestLog} => {response.StatusCode}", new Exception(response.Content));
-                else
-                    log.Debug(() => $"{requestLog} => {response.StatusCode} {Environment.NewLine} {response.Content}");
-            }
-            else
-            {
-                log.ErrorException(requestLog, response.ErrorException);
-            }
-        }
     }
 }
