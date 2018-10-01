@@ -121,7 +121,7 @@ namespace Localizations.Contracts
         {
             var translations = localization.GetAll(header);
 
-            if (ReferenceEquals(null, translations) == false && translations.Any() == true)
+            if (translations is null == false && translations.Any() == true)
             {
                 return translations.ToDictionary(key => key.Result().Key, value => value.Result().Value);
             }
@@ -141,7 +141,7 @@ namespace Localizations.Contracts
         {
             var translations = localization.GetAll(locale);
 
-            if (ReferenceEquals(null, translations) == false && translations.Any() == true)
+            if (translations  is null == false && translations.Any() == true)
             {
                 return translations.ToDictionary(key => key.Result().Key, value => value.Result().Value);
             }

@@ -68,13 +68,11 @@ namespace Localizations.PhraseApp
                 CacheTranslations();
             }
 
-            ConcurrentDictionary<string, TranslationModel> translationsForLocale;
-            if (translationCachePerLocale.TryGetValue(locale, out translationsForLocale))
+            if (translationCachePerLocale.TryGetValue(locale, out ConcurrentDictionary<string, TranslationModel> translationsForLocale))
             {
-                TranslationModel translation;
-                if (translationsForLocale.TryGetValue(key, out translation) == true)
+                if (translationsForLocale.TryGetValue(key, out TranslationModel translation) == true)
                 {
-                    if (ReferenceEquals(null, translation) == false)
+                    if (translation is null == false)
                         return new SafeGet<TranslationModel>(translation);
                 }
             }
@@ -104,7 +102,7 @@ namespace Localizations.PhraseApp
         /// <returns>The resulting translation for this <paramref name="header"/>. If no translation is not found for this <paramref name="header"/> the result will be "missing-key-'{<paramref name="key"/>}'".</returns>
         public SafeGet<TranslationModel> Get(string key, AcceptLanguageHeader header)
         {
-            if (ReferenceEquals(null, header) == true) throw new ArgumentNullException(nameof(header));
+            if (header is null) throw new ArgumentNullException(nameof(header));
 
             foreach (var locale in header.Locales)
             {
@@ -114,13 +112,11 @@ namespace Localizations.PhraseApp
                     CacheTranslations();
                 }
 
-                ConcurrentDictionary<string, TranslationModel> translationsForLocale;
-                if (translationCachePerLocale.TryGetValue(locale, out translationsForLocale))
+                if (translationCachePerLocale.TryGetValue(locale, out ConcurrentDictionary<string, TranslationModel> translationsForLocale))
                 {
-                    TranslationModel translation;
-                    if (translationsForLocale.TryGetValue(key, out translation) == true)
+                    if (translationsForLocale.TryGetValue(key, out TranslationModel translation) == true)
                     {
-                        if (ReferenceEquals(null, translation) == false)
+                        if (translation  is null == false)
                             return new SafeGet<TranslationModel>(translation);
                     }
                 }
@@ -156,8 +152,7 @@ namespace Localizations.PhraseApp
                 CacheTranslations();
             }
 
-            ConcurrentDictionary<string, TranslationModel> translationsForLocale;
-            if (translationCachePerLocale.TryGetValue(locale, out translationsForLocale))
+            if (translationCachePerLocale.TryGetValue(locale, out ConcurrentDictionary<string, TranslationModel> translationsForLocale))
             {
                 return new List<SafeGet<TranslationModel>>(translationsForLocale.Values.Select(x => new SafeGet<TranslationModel>(x)));
             }
@@ -186,7 +181,7 @@ namespace Localizations.PhraseApp
         /// <returns>The resulting translations for this <paramref name="header"/>. If no translations are not found for this <paramref name="header"/> the collection will be empty.</returns>
         public List<SafeGet<TranslationModel>> GetAll(AcceptLanguageHeader header)
         {
-            if (ReferenceEquals(null, header) == true) throw new ArgumentNullException(nameof(header));
+            if (header is null) throw new ArgumentNullException(nameof(header));
 
             foreach (var locale in header.Locales)
             {
@@ -196,8 +191,7 @@ namespace Localizations.PhraseApp
                     CacheTranslations();
                 }
 
-                ConcurrentDictionary<string, TranslationModel> translationsForLocale;
-                if (translationCachePerLocale.TryGetValue(locale, out translationsForLocale))
+                if (translationCachePerLocale.TryGetValue(locale, out ConcurrentDictionary<string, TranslationModel> translationsForLocale))
                 {
                     return new List<SafeGet<TranslationModel>>(translationsForLocale.Values.Select(x => new SafeGet<TranslationModel>(x)));
                 }
@@ -249,7 +243,7 @@ namespace Localizations.PhraseApp
                     var resource = $"projects/{projectId}/locales/{locale.Id}/download?file_format=simple_json";
                     var response = client.Execute<Dictionary<string, string>>(CreateRestRequest(resource, Method.GET));
 
-                    if (ReferenceEquals(null, response) == true)
+                    if (response is null)
                     {
                         log.Warn(() => $"Initialization for locale {locale.Name} with id {locale.Id} failed. Response was null");
                         continue;
@@ -288,7 +282,7 @@ namespace Localizations.PhraseApp
 
             var response = client.Execute<List<PhraseAppLocaleModel>>(request);
 
-            if (ReferenceEquals(null, response) == true)
+            if (response is null)
                 log.Warn(() => $"Unable to load locales for project {projectId}");
 
             CalculateNextRequestTimestamp(response);
@@ -310,7 +304,7 @@ namespace Localizations.PhraseApp
         T GetHeaderValue<T>(IRestResponse response, string headerName, T defaultValue = default(T))
         {
             var headerParam = response.Headers.Where(header => header.Name == headerName).SingleOrDefault();
-            if (ReferenceEquals(null, headerParam) == false)
+            if (headerParam is null == false)
             {
                 object value = headerParam.Value;
                 var converter = TypeDescriptor.GetConverter(typeof(T));
@@ -357,7 +351,7 @@ namespace Localizations.PhraseApp
         string GetEtagValueFromHeaders(IRestResponse response)
         {
             var etagHeader = response.Headers.Where(x => x.Name == "ETag").SingleOrDefault();
-            if (ReferenceEquals(null, etagHeader) == false)
+            if (etagHeader is null == false)
                 return etagHeader.Value.ToString();
 
             return string.Empty;
@@ -367,10 +361,9 @@ namespace Localizations.PhraseApp
         {
             var lastModifiedHeader = response.Headers.Where(x => x.Name == "Last-Modified").SingleOrDefault();
 
-            if (ReferenceEquals(null, lastModifiedHeader) == false)
+            if (lastModifiedHeader is null == false)
             {
-                DateTime d;
-                if (DateTime.TryParse(lastModifiedHeader.Value.ToString(), out d) == true)
+                if (DateTime.TryParse(lastModifiedHeader.Value.ToString(), out DateTime d) == true)
                 {
                     return d.ToFileTimeUtc();
                 }
@@ -391,8 +384,10 @@ namespace Localizations.PhraseApp
 
         IRestRequest CreateRestRequest(string resource, Method method, List<KeyValuePair<string, string>> headers)
         {
-            var request = new RestRequest(resource, method);
-            request.RequestFormat = DataFormat.Json;
+            var request = new RestRequest(resource, method)
+            {
+                RequestFormat = DataFormat.Json
+            };
             request.AddHeader("Authorization", $"token {accessToken}");
 
             foreach (var header in headers)
@@ -417,7 +412,7 @@ namespace Localizations.PhraseApp
 
         void LogResponse<T>(IRestResponse<T> response, string requestLog)
         {
-            if (ReferenceEquals(null, response.ErrorException))
+            if (response.ErrorException is null)
             {
                 if (response.HasClientError() && log.IsWarnEnabled())
                     log.WarnException($"{requestLog} => {response.StatusCode}", new Exception(response.Content));
