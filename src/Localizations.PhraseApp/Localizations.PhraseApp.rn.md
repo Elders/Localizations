@@ -1,3 +1,6 @@
+#### 1.0.0-beta0005 - 05.10.2018
+* Code cleanup
+
 #### 1.0.0-beta0004 - 01.10.2018
 * Removes code which is not in use
 * Removes some of the project warnings
