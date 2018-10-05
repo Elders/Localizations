@@ -1,7 +1,7 @@
 ﻿using System.Collections.Generic;
 using System.Linq;
 
-namespace Localizations.Contracts
+namespace Localizations
 {
     public static class LocalizationExtensions
     {
@@ -141,7 +141,7 @@ namespace Localizations.Contracts
         {
             var translations = localization.GetAll(locale);
 
-            if (translations  is null == false && translations.Any() == true)
+            if (translations is null == false && translations.Any() == true)
             {
                 return translations.ToDictionary(key => key.Result().Key, value => value.Result().Value);
             }

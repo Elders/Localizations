@@ -1,6 +1,6 @@
 ﻿using System.Collections.Generic;
 
-namespace Localizations.Contracts
+namespace Localizations
 {
     public interface ILocalization
     {

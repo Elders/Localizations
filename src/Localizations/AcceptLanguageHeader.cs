@@ -3,7 +3,7 @@ using System.Collections.ObjectModel;
 using System.Linq;
 using System.Text.RegularExpressions;
 
-namespace Localizations.Contracts
+namespace Localizations
 {
     public class AcceptLanguageHeader
     {

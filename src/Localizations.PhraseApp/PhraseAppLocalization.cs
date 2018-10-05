@@ -3,7 +3,6 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Linq;
-using Localizations.Contracts;
 using Localizations.PhraseApp.Logging;
 using RestSharp;
 
@@ -11,7 +10,7 @@ namespace Localizations.PhraseApp
 {
     public class PhraseAppLocalization : ILocalization
     {
-        readonly ILog log;
+        static readonly ILog log = LogProvider.GetLogger(typeof(PhraseAppLocalization));
 
         readonly IRestClient client;
 
@@ -46,7 +45,7 @@ namespace Localizations.PhraseApp
             client = new RestClient(PhraseAppConstants.BaseUrl);
             translationCachePerLocale = new ConcurrentDictionary<string, ConcurrentDictionary<string, TranslationModel>>();
             localeCache = new ConcurrentDictionary<string, PhraseAppLocaleModel>();
-            log = LogProvider.GetLogger(typeof(PhraseAppLocalization));
+
 
             CacheLocales();
             CacheTranslations();
@@ -116,7 +115,7 @@ namespace Localizations.PhraseApp
                 {
                     if (translationsForLocale.TryGetValue(key, out TranslationModel translation) == true)
                     {
-                        if (translation  is null == false)
+                        if (translation is null == false)
                             return new SafeGet<TranslationModel>(translation);
                     }
                 }
