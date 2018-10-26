@@ -18,6 +18,8 @@ namespace Localizations.PhraseApp
 
         readonly ConcurrentDictionary<string, ConcurrentDictionary<string, TranslationModel>> translationCachePerLocale;
 
+        readonly ConcurrentDictionary<string, string> etagPerLocaleCache;
+
         readonly string accessToken;
 
         readonly string projectId;
@@ -26,7 +28,7 @@ namespace Localizations.PhraseApp
 
         DateTime nextCheckForChanges;
 
-        string localeEtag;
+        string localesEtag;
 
         public bool StrictLocale { get; private set; }
 
@@ -45,7 +47,7 @@ namespace Localizations.PhraseApp
             client = new RestClient(PhraseAppConstants.BaseUrl);
             translationCachePerLocale = new ConcurrentDictionary<string, ConcurrentDictionary<string, TranslationModel>>();
             localeCache = new ConcurrentDictionary<string, SanitizedPhraseAppLocaleModel>();
-
+            etagPerLocaleCache = new ConcurrentDictionary<string, string>();
 
             CacheLocales();
             CacheTranslations();
@@ -205,7 +207,12 @@ namespace Localizations.PhraseApp
                 try
                 {
                     var resource = $"projects/{projectId}/locales/{sanitizedLocale.Id}/download?file_format=simple_json";
-                    var response = client.Execute<Dictionary<string, string>>(CreateRestRequest(resource, Method.GET));
+                    IRestResponse<Dictionary<string, string>> response = null;
+
+                    if (etagPerLocaleCache.TryGetValue(sanitizedLocale.Name, out string currentLocaleEtag))
+                        response = client.Execute<Dictionary<string, string>>(CreateRestRequest(resource, Method.GET, currentLocaleEtag));
+                    else
+                        response = client.Execute<Dictionary<string, string>>(CreateRestRequest(resource, Method.GET));
 
                     if (response is null)
                     {
@@ -230,6 +237,9 @@ namespace Localizations.PhraseApp
                         cacheForSpecificLocale.AddOrUpdate(translation.Key, model, (k, v) => model);
                     }
 
+                    if (TryGetEtagValueFromHeaders(response, out string localeEtagFromHeader))
+                        etagPerLocaleCache.AddOrUpdate(sanitizedLocale.Name, currentLocaleEtag, (k, v) => localeEtagFromHeader);
+
                     translationCachePerLocale.AddOrUpdate(sanitizedLocale.Name, cacheForSpecificLocale, (k, v) => cacheForSpecificLocale);
                 }
                 catch (Exception ex)
@@ -244,8 +254,7 @@ namespace Localizations.PhraseApp
         void CacheLocales()
         {
             var resource = $"projects/{projectId}/locales";
-            var request = CreateRestRequest(resource, Method.GET, localeEtag);
-            string requestLog = $"{Enum.GetName(typeof(Method), request.Method)} - {client.BaseUrl}{request.Resource}{Environment.NewLine}";
+            var request = CreateRestRequest(resource, Method.GET, localesEtag);
 
             var response = client.Execute<List<PhraseAppLocaleModel>>(request);
 
@@ -268,7 +277,9 @@ namespace Localizations.PhraseApp
 
             if (response.StatusCode == System.Net.HttpStatusCode.OK)
             {
-                localeEtag = GetEtagValueFromHeaders(response);
+                if (TryGetEtagValueFromHeaders(response, out string etag))
+                    localesEtag = etag;
+
                 foreach (PhraseAppLocaleModel locale in response.Data)
                 {
                     var sanitizedLocale = new SanitizedPhraseAppLocaleModel(locale.Id, new SanitizedLocaleName(locale.Name));
@@ -337,13 +348,17 @@ namespace Localizations.PhraseApp
             return new DateTime(1970, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc).AddSeconds(epoch);
         }
 
-        string GetEtagValueFromHeaders(IRestResponse response)
+        bool TryGetEtagValueFromHeaders(IRestResponse response, out string etag)
         {
+            etag = string.Empty;
             var etagHeader = response.Headers.Where(x => x.Name == "ETag").SingleOrDefault();
             if (etagHeader is null == false)
-                return etagHeader.Value.ToString();
+            {
+                etag = etagHeader.Value.ToString();
+                return true;
+            }
 
-            return string.Empty;
+            return false;
         }
 
         long GetLastModifiedFromHeadersAsFileTimeUtc(IRestResponse response)
