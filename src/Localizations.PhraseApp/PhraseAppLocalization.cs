@@ -219,6 +219,9 @@ namespace Localizations.PhraseApp
                         continue;
                     }
 
+                    if (response.StatusCode == System.Net.HttpStatusCode.NotModified)
+                        continue;
+
                     var cacheForSpecificLocale = new ConcurrentDictionary<string, TranslationModel>();
                     var lastModified = GetLastModifiedFromHeadersAsFileTimeUtc(response);
                     foreach (var translation in response.Data)
@@ -247,9 +250,21 @@ namespace Localizations.PhraseApp
             var response = client.Execute<List<PhraseAppLocaleModel>>(request);
 
             if (response is null)
+            {
                 log.Warn(() => $"Unable to load locales for project {projectId}");
+                return;
+            }
+
+            if (response.ResponseStatus != ResponseStatus.Completed)
+            {
+                log.Warn(() => $"Initialization locales for project {projectId} failed. Response status was {response.ResponseStatus}");
+                return;
+            }
 
             CalculateNextRequestTimestamp(response);
+
+            if (response.StatusCode == System.Net.HttpStatusCode.NotModified)
+                return;
 
             if (response.StatusCode == System.Net.HttpStatusCode.OK)
             {
@@ -259,11 +274,11 @@ namespace Localizations.PhraseApp
                     var sanitizedLocale = new SanitizedPhraseAppLocaleModel(locale.Id, new SanitizedLocaleName(locale.Name));
                     localeCache.AddOrUpdate(sanitizedLocale.Id, sanitizedLocale, (k, v) => sanitizedLocale);
                 }
+
+                return;
             }
-            else
-            {
-                log.Warn(() => $"Unable to load locales for project {projectId}. Response status is {response.ResponseStatus}. Error Message: {response.ErrorMessage}");
-            }
+
+            log.Warn(() => $"Unable to load locales for project {projectId}. Response status is {response.ResponseStatus}. Error Message: {response.ErrorMessage}");
         }
 
         void CacheLocalesAndTranslations()
