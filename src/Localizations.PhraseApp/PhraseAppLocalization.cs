@@ -14,7 +14,7 @@ namespace Localizations.PhraseApp
 
         readonly IRestClient client;
 
-        readonly ConcurrentDictionary<string, PhraseAppLocaleModel> localeCache;
+        readonly ConcurrentDictionary<string, SanitizedPhraseAppLocaleModel> localeCache;
 
         readonly ConcurrentDictionary<string, ConcurrentDictionary<string, TranslationModel>> translationCachePerLocale;
 
@@ -30,7 +30,7 @@ namespace Localizations.PhraseApp
 
         public bool StrictLocale { get; private set; }
 
-        public string DefaultLocale { get; private set; }
+        public SanitizedLocaleName DefaultLocale { get; private set; }
 
         public PhraseAppLocalization(string accessToken, string projectId, TimeSpan ttl)
         {
@@ -44,7 +44,7 @@ namespace Localizations.PhraseApp
 
             client = new RestClient(PhraseAppConstants.BaseUrl);
             translationCachePerLocale = new ConcurrentDictionary<string, ConcurrentDictionary<string, TranslationModel>>();
-            localeCache = new ConcurrentDictionary<string, PhraseAppLocaleModel>();
+            localeCache = new ConcurrentDictionary<string, SanitizedPhraseAppLocaleModel>();
 
 
             CacheLocales();
@@ -61,34 +61,45 @@ namespace Localizations.PhraseApp
         /// <returns>Returns translation by key and locale</returns>
         public SafeGet<TranslationModel> Get(string key, string locale)
         {
-            if (ShouldCheckForChanges() == true)
+            if (string.IsNullOrEmpty(key) == true) throw new ArgumentNullException(nameof(key));
+            if (string.IsNullOrEmpty(locale) == true) throw new ArgumentNullException(nameof(locale));
+
+            List<SafeGet<TranslationModel>> translations = GetAll(locale);
+            SafeGet<TranslationModel> translation = translations.SingleOrDefault(x => x.Result().Key.Equals(key, StringComparison.OrdinalIgnoreCase));
+
+            if (translation is null)
+                return SafeGet<TranslationModel>.NotFound;
+
+            return translation;
+        }
+
+        /// <summary>
+        /// Translations based on locale
+        /// Depending of configuration can fallback and try with less restrictive locales e.g zh-hk-hans to zh-hk to zh
+        /// Depending of configuration can fallback specified DefaultLocale
+        /// </summary>
+        /// <param name="locale"></param>
+        /// <returns>Returns all the translations by locale</returns>
+        public List<SafeGet<TranslationModel>> GetAll(string locale)
+        {
+            if (string.IsNullOrEmpty(locale) == true) throw new ArgumentNullException(nameof(locale));
+            var sanitizedLocaleName = new SanitizedLocaleName(locale);
+
+            CacheLocalesAndTranslations();
+
+            if (translationCachePerLocale.TryGetValue(sanitizedLocaleName, out ConcurrentDictionary<string, TranslationModel> translationsForLocale))
+                return new List<SafeGet<TranslationModel>>(translationsForLocale.Values.Select(x => new SafeGet<TranslationModel>(x)));
+
+            if (StrictLocale == false && sanitizedLocaleName.Value.Contains(SanitizedLocaleName.LocaleSeparator) == true)
             {
-                CacheLocales();
-                CacheTranslations();
+                var next = sanitizedLocaleName.Value.Remove(sanitizedLocaleName.Value.LastIndexOf(SanitizedLocaleName.LocaleSeparator));
+                return GetAll(next);
             }
 
-            if (translationCachePerLocale.TryGetValue(locale, out ConcurrentDictionary<string, TranslationModel> translationsForLocale))
-            {
-                if (translationsForLocale.TryGetValue(key, out TranslationModel translation) == true)
-                {
-                    if (translation is null == false)
-                        return new SafeGet<TranslationModel>(translation);
-                }
-            }
+            if (ShouldFallbackToDefaultLocale(sanitizedLocaleName))
+                return GetAll(DefaultLocale);
 
-            // separator can be _ or -
-            var replaced = locale.Replace("_", "-");
-            if (StrictLocale == false && replaced.Contains("-") == true)
-            {
-                var next = replaced.Remove(replaced.LastIndexOf('-'));
-                return Get(key, next);
-            }
-
-            // Checks for default locale and if it is different the the locale we have already tried
-            if (string.IsNullOrEmpty(DefaultLocale) == false && DefaultLocale.Equals(locale, StringComparison.OrdinalIgnoreCase) == false)
-                return Get(key, DefaultLocale);
-
-            return SafeGet<TranslationModel>.NotFound;
+            return new List<SafeGet<TranslationModel>>();
         }
 
         /// <summary>
@@ -101,74 +112,20 @@ namespace Localizations.PhraseApp
         /// <returns>The resulting translation for this <paramref name="header"/>. If no translation is not found for this <paramref name="header"/> the result will be "missing-key-'{<paramref name="key"/>}'".</returns>
         public SafeGet<TranslationModel> Get(string key, AcceptLanguageHeader header)
         {
+            if (string.IsNullOrEmpty(key) == true) throw new ArgumentNullException(nameof(key));
             if (header is null) throw new ArgumentNullException(nameof(header));
 
             foreach (var locale in header.Locales)
             {
-                if (ShouldCheckForChanges() == true)
-                {
-                    CacheLocales();
-                    CacheTranslations();
-                }
-
-                if (translationCachePerLocale.TryGetValue(locale, out ConcurrentDictionary<string, TranslationModel> translationsForLocale))
-                {
-                    if (translationsForLocale.TryGetValue(key, out TranslationModel translation) == true)
-                    {
-                        if (translation is null == false)
-                            return new SafeGet<TranslationModel>(translation);
-                    }
-                }
-
-                // separator can be _ or -
-                var replaced = locale.Replace("_", "-");
-                if (StrictLocale == false && replaced.Contains("-") == true)
-                {
-                    var next = replaced.Remove(replaced.LastIndexOf('-'));
-                    return Get(key, next);
-                }
+                var translationModel = Get(key, locale);
+                if (translationModel.Found)
+                    return translationModel;
             }
 
-            // Checks for default locale and if it is different the the locale we have already tried
-            if (string.IsNullOrEmpty(DefaultLocale) == false && header.Locales.Any(x => x.Equals(DefaultLocale, StringComparison.OrdinalIgnoreCase)) == false)
+            if (ShouldFallbackToDefaultLocale(header))
                 return Get(key, DefaultLocale);
 
             return SafeGet<TranslationModel>.NotFound;
-        }
-
-        /// <summary>
-        /// Translations based on locale
-        /// Depending of configuration can fallback and try with less restrictive locales e.g zh-hk-hans to zh-hk to zh
-        /// Depending of configuration can fallback specified DefaultLocale
-        /// </summary>
-        /// <param name="locale"></param>
-        /// <returns>Returns all the translations by locale</returns>
-        public List<SafeGet<TranslationModel>> GetAll(string locale)
-        {
-            if (ShouldCheckForChanges() == true)
-            {
-                CacheLocales();
-                CacheTranslations();
-            }
-
-            if (translationCachePerLocale.TryGetValue(locale, out ConcurrentDictionary<string, TranslationModel> translationsForLocale))
-            {
-                return new List<SafeGet<TranslationModel>>(translationsForLocale.Values.Select(x => new SafeGet<TranslationModel>(x)));
-            }
-
-            // separator can be _ or -
-            var replaced = locale.Replace("_", "-");
-            if (StrictLocale == false && replaced.Contains("-") == true)
-            {
-                var next = replaced.Remove(replaced.LastIndexOf('-'));
-                return GetAll(next);
-            }
-
-            // Checks for default locale and if it is different the the locale we have already tried
-            if (string.IsNullOrEmpty(DefaultLocale) == false && DefaultLocale.Equals(locale, StringComparison.OrdinalIgnoreCase) == false)
-                return GetAll(DefaultLocale);
-
-            return new List<SafeGet<TranslationModel>>();
         }
 
         /// <summary>
@@ -184,28 +141,12 @@ namespace Localizations.PhraseApp
 
             foreach (var locale in header.Locales)
             {
-                if (ShouldCheckForChanges() == true)
-                {
-                    CacheLocales();
-                    CacheTranslations();
-                }
-
-                if (translationCachePerLocale.TryGetValue(locale, out ConcurrentDictionary<string, TranslationModel> translationsForLocale))
-                {
-                    return new List<SafeGet<TranslationModel>>(translationsForLocale.Values.Select(x => new SafeGet<TranslationModel>(x)));
-                }
-
-                // separator can be _ or -
-                var replaced = locale.Replace("_", "-");
-                if (StrictLocale == false && replaced.Contains("-") == true)
-                {
-                    var next = replaced.Remove(replaced.LastIndexOf('-'));
-                    return GetAll(next);
-                }
+                var translations = GetAll(locale);
+                if (translations.Count > 0)
+                    return translations;
             }
 
-            // Checks for default locale and if it is different the the locale we have already tried
-            if (string.IsNullOrEmpty(DefaultLocale) == false && header.Locales.Any(x => x.Equals(DefaultLocale, StringComparison.OrdinalIgnoreCase)) == false)
+            if (ShouldFallbackToDefaultLocale(header))
                 return GetAll(DefaultLocale);
 
             return new List<SafeGet<TranslationModel>>();
@@ -229,28 +170,52 @@ namespace Localizations.PhraseApp
         /// <returns></returns>
         public PhraseAppLocalization UseDefaultLocale(string locale)
         {
-            DefaultLocale = locale;
+            DefaultLocale = new SanitizedLocaleName(locale);
             return this;
+        }
+
+        /// <summary>
+        /// Attempts to use fall-back strategy by using DefaultLocale
+        /// Checks if default locale is defined.
+        /// Also checks if it is different than the locales we have already tried
+        /// </summary>
+        /// <param name="header"></param>
+        /// <returns></returns>
+        bool ShouldFallbackToDefaultLocale(AcceptLanguageHeader header)
+        {
+            return string.IsNullOrEmpty(DefaultLocale) == false && header.Locales.Any(x => x.Equals(DefaultLocale, StringComparison.OrdinalIgnoreCase)) == false;
+        }
+
+        /// <summary>
+        /// Attempts to use fall-back strategy by using DefaultLocale
+        /// Checks if default locale is defined.
+        /// Also checks if the passed locale is different than the DefaultLocale
+        /// </summary>
+        /// <param name="currentLocale"></param>
+        /// <returns></returns>
+        bool ShouldFallbackToDefaultLocale(string currentLocale)
+        {
+            return string.IsNullOrEmpty(DefaultLocale) == false && DefaultLocale.Value.Equals(currentLocale, StringComparison.OrdinalIgnoreCase) == false;
         }
 
         void CacheTranslations()
         {
-            foreach (var locale in localeCache.Values)
+            foreach (var sanitizedLocale in localeCache.Values)
             {
                 try
                 {
-                    var resource = $"projects/{projectId}/locales/{locale.Id}/download?file_format=simple_json";
+                    var resource = $"projects/{projectId}/locales/{sanitizedLocale.Id}/download?file_format=simple_json";
                     var response = client.Execute<Dictionary<string, string>>(CreateRestRequest(resource, Method.GET));
 
                     if (response is null)
                     {
-                        log.Warn(() => $"Initialization for locale {locale.Name} with id {locale.Id} failed. Response was null");
+                        log.Warn(() => $"Initialization for locale {sanitizedLocale.Name} with id {sanitizedLocale.Id} failed. Response was null");
                         continue;
                     }
 
                     if (response.ResponseStatus != ResponseStatus.Completed)
                     {
-                        log.Warn(() => $"Initialization for locale {locale.Name} with id {locale.Id} failed. Response status was {response.ResponseStatus}");
+                        log.Warn(() => $"Initialization for locale {sanitizedLocale.Name} with id {sanitizedLocale.Id} failed. Response status was {response.ResponseStatus}");
                         continue;
                     }
 
@@ -258,15 +223,15 @@ namespace Localizations.PhraseApp
                     var lastModified = GetLastModifiedFromHeadersAsFileTimeUtc(response);
                     foreach (var translation in response.Data)
                     {
-                        var model = new TranslationModel(translation.Key, translation.Value, locale.Name, lastModified);
+                        var model = new TranslationModel(translation.Key, translation.Value, sanitizedLocale.Name.Value, lastModified);
                         cacheForSpecificLocale.AddOrUpdate(translation.Key, model, (k, v) => model);
                     }
 
-                    translationCachePerLocale.AddOrUpdate(locale.Name, cacheForSpecificLocale, (k, v) => cacheForSpecificLocale);
+                    translationCachePerLocale.AddOrUpdate(sanitizedLocale.Name, cacheForSpecificLocale, (k, v) => cacheForSpecificLocale);
                 }
                 catch (Exception ex)
                 {
-                    log.ErrorException($"Initialization for locale {locale.Name} with id {locale.Id} failed.", ex);
+                    log.ErrorException($"Initialization for locale {sanitizedLocale.Name} with id {sanitizedLocale.Id} failed.", ex);
                 }
             }
 
@@ -289,14 +254,46 @@ namespace Localizations.PhraseApp
             if (response.StatusCode == System.Net.HttpStatusCode.OK)
             {
                 localeEtag = GetEtagValueFromHeaders(response);
-                foreach (var locale in response.Data)
+                foreach (PhraseAppLocaleModel locale in response.Data)
                 {
-                    localeCache.AddOrUpdate(locale.Name, locale, (k, v) => locale);
+                    var sanitizedLocale = new SanitizedPhraseAppLocaleModel(locale.Id, new SanitizedLocaleName(locale.Name));
+                    localeCache.AddOrUpdate(sanitizedLocale.Id, sanitizedLocale, (k, v) => sanitizedLocale);
                 }
             }
             else
             {
                 log.Warn(() => $"Unable to load locales for project {projectId}. Response status is {response.ResponseStatus}. Error Message: {response.ErrorMessage}");
+            }
+        }
+
+        void CacheLocalesAndTranslations()
+        {
+            if (ShouldCheckForChanges() == true)
+            {
+                CacheLocales();
+                CacheTranslations();
+            }
+        }
+
+        bool ShouldCheckForChanges()
+        {
+            if (nextCheckForChanges < DateTime.UtcNow)
+                return true;
+
+            return false;
+        }
+
+        void CalculateNextRequestTimestamp(IRestResponse response)
+        {
+            int remainingRequests = GetHeaderValue<int>(response, "X-Rate-Limit-Remaining", 500);
+
+            if (remainingRequests == 0)
+            {
+                log.Warn("[PhraseApp] Request limit exceeded (X-Rate-Limit-Remaining). https://phraseapp.com/docs/api/v2/#rate-limit");
+
+                long headerTimeoutParameter = GetHeaderValue<long>(response, "X-Rate-Limit-Reset");
+                if (headerTimeoutParameter > 0)
+                    nextCheckForChanges = ConvertTimestampFromParameterToDateTime(headerTimeoutParameter);
             }
         }
 
@@ -320,31 +317,9 @@ namespace Localizations.PhraseApp
             return default(T);
         }
 
-        void CalculateNextRequestTimestamp(IRestResponse response)
-        {
-            int remainingRequests = GetHeaderValue<int>(response, "X-Rate-Limit-Remaining", 500);
-
-            if (remainingRequests == 0)
-            {
-                log.Warn("[PhraseApp] Request limit exceeded (X-Rate-Limit-Remaining). https://phraseapp.com/docs/api/v2/#rate-limit");
-
-                long headerTimeoutParameter = GetHeaderValue<long>(response, "X-Rate-Limit-Reset");
-                if (headerTimeoutParameter > 0)
-                    nextCheckForChanges = ConvertTimestampFromParameterToDateTime(headerTimeoutParameter);
-            }
-        }
-
-        private static DateTime ConvertTimestampFromParameterToDateTime(long epoch)
+        static DateTime ConvertTimestampFromParameterToDateTime(long epoch)
         {
             return new DateTime(1970, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc).AddSeconds(epoch);
-        }
-
-        bool ShouldCheckForChanges()
-        {
-            if (nextCheckForChanges < DateTime.UtcNow)
-                return true;
-
-            return false;
         }
 
         string GetEtagValueFromHeaders(IRestResponse response)
