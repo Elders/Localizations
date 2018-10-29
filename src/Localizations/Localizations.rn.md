@@ -1,3 +1,6 @@
+#### 1.0.0-beta0006 - 29.10.2018
+* Release in order not to break the project (don't ask)
+
 #### 1.0.0-beta0005 - 05.10.2018
 * Code cleanup
 

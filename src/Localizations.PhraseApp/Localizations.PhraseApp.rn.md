@@ -1,3 +1,8 @@
+#### 1.0.0-beta0006 - 29.10.2018
+* Fixes issue with lower/upper case locales
+* Starts passing etag when quering translations
+* Code cleanup
+
 #### 1.0.0-beta0005 - 05.10.2018
 * Code cleanup
 
