@@ -7,9 +7,11 @@ namespace Localizations.Playground
     {
         static void Main(string[] args)
         {
-            TimeSpan ttl = TimeSpan.FromMinutes(1);
-            string accessToken = "";
-            string projectId = "";
+            LogStartup.Boot();
+
+            TimeSpan ttl = TimeSpan.FromSeconds(1);
+            string accessToken = "a";
+            string projectId = "e";
             ILocalization localization = new PhraseAppLocalization(accessToken, projectId, ttl);
 
             var byKey = localization.Get("1vipcustomer", "En");

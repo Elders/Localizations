@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
@@ -6,8 +6,22 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="log4net" Version="2.0.8" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\Localizations.PhraseApp\Localizations.PhraseApp.csproj" />
     <ProjectReference Include="..\Localizations\Localizations.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Remove="log4net.config" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="log4net.config">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
   </ItemGroup>
 
 </Project>
