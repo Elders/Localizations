@@ -204,31 +204,37 @@ namespace Localizations.PhraseApp
         {
             foreach (var sanitizedLocale in localeCache.Values)
             {
-                try
+                var resource = $"projects/{projectId}/locales/{sanitizedLocale.Id}/download?file_format=simple_json";
+                IRestResponse<Dictionary<string, string>> response = null;
+
+                if (etagPerLocaleCache.TryGetValue(sanitizedLocale.Name, out string currentLocaleEtag))
+                    response = client.Execute<Dictionary<string, string>>(CreateRestRequest(resource, Method.GET, currentLocaleEtag));
+                else
+                    response = client.Execute<Dictionary<string, string>>(CreateRestRequest(resource, Method.GET));
+
+                if (response is null)
                 {
-                    var resource = $"projects/{projectId}/locales/{sanitizedLocale.Id}/download?file_format=simple_json";
-                    IRestResponse<Dictionary<string, string>> response = null;
+                    log.Warn(() => $"Initialization for locale {sanitizedLocale.Name} with id {sanitizedLocale.Id} failed. Response was null");
+                    continue;
+                }
 
-                    if (etagPerLocaleCache.TryGetValue(sanitizedLocale.Name, out string currentLocaleEtag))
-                        response = client.Execute<Dictionary<string, string>>(CreateRestRequest(resource, Method.GET, currentLocaleEtag));
-                    else
-                        response = client.Execute<Dictionary<string, string>>(CreateRestRequest(resource, Method.GET));
+                if (response.ResponseStatus != ResponseStatus.Completed)
+                {
+                    log.Warn(() => $"Initialization for locale {sanitizedLocale.Name} with id {sanitizedLocale.Id} failed. Response status was {response.ResponseStatus}");
+                    continue;
+                }
 
-                    if (response is null)
-                    {
-                        log.Warn(() => $"Initialization for locale {sanitizedLocale.Name} with id {sanitizedLocale.Id} failed. Response was null");
-                        continue;
-                    }
+                if (response.StatusCode == System.Net.HttpStatusCode.Unauthorized)
+                {
+                    log.Error(() => $"Initialization for locale {sanitizedLocale.Name} with id {sanitizedLocale.Id} failed. Response status code is Unauthorized");
+                    break;
+                }
 
-                    if (response.ResponseStatus != ResponseStatus.Completed)
-                    {
-                        log.Warn(() => $"Initialization for locale {sanitizedLocale.Name} with id {sanitizedLocale.Id} failed. Response status was {response.ResponseStatus}");
-                        continue;
-                    }
+                if (response.StatusCode == System.Net.HttpStatusCode.NotModified)
+                    continue;
 
-                    if (response.StatusCode == System.Net.HttpStatusCode.NotModified)
-                        continue;
-
+                if (response.StatusCode == System.Net.HttpStatusCode.OK)
+                {
                     var cacheForSpecificLocale = new ConcurrentDictionary<string, TranslationModel>();
                     var lastModified = GetLastModifiedFromHeadersAsFileTimeUtc(response);
                     foreach (var translation in response.Data)
@@ -242,10 +248,8 @@ namespace Localizations.PhraseApp
 
                     translationCachePerLocale.AddOrUpdate(sanitizedLocale.Name, cacheForSpecificLocale, (k, v) => cacheForSpecificLocale);
                 }
-                catch (Exception ex)
-                {
-                    log.ErrorException($"Initialization for locale {sanitizedLocale.Name} with id {sanitizedLocale.Id} failed.", ex);
-                }
+
+                log.Warn(() => $"Initialization for locale {sanitizedLocale.Name} with id {sanitizedLocale.Id} failed.");
             }
 
             nextCheckForChanges = DateTime.UtcNow.Add(ttl);
@@ -272,6 +276,12 @@ namespace Localizations.PhraseApp
 
             CalculateNextRequestTimestamp(response);
 
+            if (response.StatusCode == System.Net.HttpStatusCode.Unauthorized)
+            {
+                log.Error(() => $"Unable to load locales for project {projectId}. Response status code is Unauthorized.");
+                return;
+            }
+
             if (response.StatusCode == System.Net.HttpStatusCode.NotModified)
                 return;
 
@@ -289,7 +299,7 @@ namespace Localizations.PhraseApp
                 return;
             }
 
-            log.Warn(() => $"Unable to load locales for project {projectId}. Response status is {response.ResponseStatus}. Error Message: {response.ErrorMessage}");
+            log.Warn(() => $"Unable to load locales for project {projectId}. Response status is {response.ResponseStatus}. Response status code is {response.StatusCode}. Error Message: {response.ErrorMessage}");
         }
 
         void CacheLocalesAndTranslations()
