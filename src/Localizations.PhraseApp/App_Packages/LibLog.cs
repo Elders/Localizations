@@ -1215,13 +1215,14 @@ namespace Localizations.PhraseApp.Logging.LogProviders
             return Type.GetType("log4net.LogManager, log4net");
         }
 
+        // https://github.com/HangfireIO/Hangfire/pull/1134
         private static Func<string, object> GetGetLoggerMethodCall()
         {
             Type logManagerType = GetLogManagerType();
-            MethodInfo method = logManagerType.GetMethodPortable("GetLogger", typeof(string));
+            MethodInfo method = logManagerType.GetRuntimeMethod("GetLogger", new[] { typeof(Assembly), typeof(string) });
             ParameterExpression nameParam = Expression.Parameter(typeof(string), "name");
-            MethodCallExpression methodCall = Expression.Call(null, method, nameParam);
-            return Expression.Lambda<Func<string, object>>(methodCall, nameParam).Compile();
+            MethodCallExpression methodCall = Expression.Call(null, method, new Expression[] { Expression.Constant(typeof(Log4NetLogProvider).GetTypeInfo().Assembly), nameParam });
+            return Expression.Lambda<Func<string, object>>(methodCall, new[] { nameParam }).Compile();
         }
 
         internal class Log4NetLogger
