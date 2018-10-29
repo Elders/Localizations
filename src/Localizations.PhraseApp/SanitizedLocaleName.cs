@@ -19,7 +19,7 @@
 
         public static implicit operator string(SanitizedLocaleName name)
         {
-            return name.Value;
+            return name?.Value;
         }
     }
 }
