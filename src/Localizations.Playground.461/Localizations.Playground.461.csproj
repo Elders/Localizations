@@ -45,7 +45,6 @@
   <ItemGroup>
     <Compile Include="LogStartup.cs" />
     <Compile Include="Program.cs" />
-    <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />
@@ -64,6 +63,9 @@
       <Project>{c07256ef-200a-4e7f-acf2-102fc2e3154b}</Project>
       <Name>Localizations</Name>
     </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <Folder Include="Properties\" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>
