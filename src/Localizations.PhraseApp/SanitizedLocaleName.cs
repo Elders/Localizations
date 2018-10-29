@@ -1,4 +1,6 @@
-﻿namespace Localizations.PhraseApp
+﻿using System;
+
+namespace Localizations.PhraseApp
 {
     public class SanitizedLocaleName
     {
@@ -6,8 +8,9 @@
 
         public SanitizedLocaleName(string name)
         {
-            name = name.Replace('_', LocaleSeparator);
-            Value = name.ToLower();
+            if (string.IsNullOrEmpty(name)) throw new ArgumentNullException(nameof(name));
+
+            Value = name.Replace('_', LocaleSeparator).ToLower();
         }
 
         public string Value { get; private set; }
