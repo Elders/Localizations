@@ -1,3 +1,6 @@
+#### 1.0.0-beta0007 - 11.07.2018
+* Updates RestSharp
+
 #### 1.0.0-beta0006 - 29.10.2018
 * Release in order not to break the project (don't ask)
 

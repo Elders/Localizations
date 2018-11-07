@@ -1,3 +1,6 @@
+#### 1.0.0-beta0007 - 11.07.2018
+* Updates RestSharp
+
 #### 1.0.0-beta0006 - 29.10.2018
 * Fixes issue with lower/upper case locales
 * Starts passing etag when quering translations
