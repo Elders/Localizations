@@ -1,3 +1,6 @@
+#### 1.0.0-beta0008 - 11.07.2018
+* Revert "Updates RestSharp"
+
 #### 1.0.0-beta0007 - 11.07.2018
 * Updates RestSharp
 
