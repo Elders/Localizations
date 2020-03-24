@@ -6,18 +6,6 @@ namespace Localizations
 {
     public static class LocalizationExtensions
     {
-        private static async Task<string> GetValueAsync(ILocalization localization, string key, AcceptLanguageHeader header, string fallbackValue)
-        {
-            string result = fallbackValue;
-
-            var translation = await localization.GetAsync(key, header).ConfigureAwait(false);
-
-            if (translation.Found == true)
-                result = translation.Result().Value;
-
-            return result;
-        }
-
         /// <summary>
         /// Try to get the transalation based on <paramref name="header"/>. If it the <paramref name="key"/> is missing we are returning "missing-key-'{<paramref name="key"/>}'".
         /// </summary>
@@ -28,9 +16,16 @@ namespace Localizations
         /// <param name="header">The Accept-Language header that will be used to get the translation.</param>
         /// <param name="fallbackValue">The fallback value that we are going to return if we do not find the specified <paramref name="key"/> and there is no default locale.</param>
         /// <returns>The resulting translation.</returns>
-        public static string GetValue(this ILocalization localization, string key, AcceptLanguageHeader header, string fallbackValue)
+        public static async Task<string> GetValueAsync(this ILocalization localization, string key, AcceptLanguageHeader header, string fallbackValue)
         {
-            return GetValue(localization, key, header, fallbackValue);
+            string result = fallbackValue;
+
+            var translation = await localization.GetAsync(key, header).ConfigureAwait(false);
+
+            if (translation.Found == true)
+                result = translation.Result().Value;
+
+            return result;
         }
 
         /// <summary>
