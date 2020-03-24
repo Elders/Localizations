@@ -1,8 +1,8 @@
 ﻿using System;
 
-namespace Localizations.PhraseApp
+namespace Localizations.PhraseApp.Internal
 {
-    public class SanitizedPhraseAppLocaleModel
+    internal class SanitizedPhraseAppLocaleModel
     {
         public SanitizedPhraseAppLocaleModel(string id, SanitizedLocaleName name)
         {

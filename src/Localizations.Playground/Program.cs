@@ -1,23 +1,33 @@
-﻿using System;
-using Localizations.PhraseApp;
+﻿using Localizations.PhraseApp;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
+using System.Threading.Tasks;
 
 namespace Localizations.Playground
 {
     class Program
     {
-        static void Main(string[] args)
+        static async Task Main()
         {
-            LogStartup.Boot();
+            IServiceCollection services = new ServiceCollection();
+            IConfiguration cfg = new ConfigurationBuilder()
+                .AddJsonFile("appsettings.json", optional: true, reloadOnChange: true)
+                .Build();
 
-            TimeSpan ttl = TimeSpan.FromSeconds(1);
-            string accessToken = "a";
-            string projectId = "e";
-            ILocalization localization = new PhraseAppLocalization(accessToken, projectId, ttl);
+            services.AddLogging();
+            services.AddPhraseApp(cfg);
+            services.AddSingleton<IConfiguration>(cfg);
+            var serviceProvider = services.BuildServiceProvider();
 
-            var byKey = localization.Get("1vipcustomer", "En");
-            var byKeyWithHeader = localization.Get("1vipcustomer", new AcceptLanguageHeader("EN"));
-            var getAll = localization.GetAll("eN");
-            var getAllWithHeader = localization.GetAll(new AcceptLanguageHeader("EN"));
+            var opts = serviceProvider.GetRequiredService<IOptions<PhraseAppOptions>>();
+
+            PhraseAppLocalization localization = serviceProvider.GetRequiredService<PhraseAppLocalization>();
+            await localization.CacheLocalesAndTranslationsAsync();
+            var byKey = await localization.GetAsync("1vipcustomer", "En");
+            var byKeyWithHeader = await localization.GetAsync("1vipcustomer", new AcceptLanguageHeader("zh-Hant"));
+            var getAll = await localization.GetAllAsync("eN");
+            var getAllWithHeader = await localization.GetAllAsync(new AcceptLanguageHeader("EN"));
         }
     }
 }

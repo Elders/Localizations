@@ -3,54 +3,53 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Linq;
-using Localizations.PhraseApp.Logging;
-using RestSharp;
+using System.Net.Http;
+using System.Text.Json;
+using System.Threading.Tasks;
+using Localizations.PhraseApp.Internal;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 
 namespace Localizations.PhraseApp
 {
     public class PhraseAppLocalization : ILocalization
     {
-        static readonly ILog log = LogProvider.GetLogger(typeof(PhraseAppLocalization));
+        private readonly HttpClient client;
 
-        readonly IRestClient client;
+        private readonly ConcurrentDictionary<string, SanitizedPhraseAppLocaleModel> localeCache;
+        private readonly ConcurrentDictionary<string, ConcurrentDictionary<string, TranslationModel>> translationCachePerLocale;
+        private readonly ConcurrentDictionary<string, string> etagPerLocaleCache;
 
-        readonly ConcurrentDictionary<string, SanitizedPhraseAppLocaleModel> localeCache;
+        private readonly JsonSerializerOptions jsonSerializerOptions;
 
-        readonly ConcurrentDictionary<string, ConcurrentDictionary<string, TranslationModel>> translationCachePerLocale;
+        private readonly ILogger<PhraseAppLocalization> log;
 
-        readonly ConcurrentDictionary<string, string> etagPerLocaleCache;
+        private DateTime nextCheckForChanges;
+        private string localesEtag;
 
-        readonly string accessToken;
+        PhraseAppOptions options;
 
-        readonly string projectId;
-
-        readonly TimeSpan ttl;
-
-        DateTime nextCheckForChanges;
-
-        string localesEtag;
-
-        public bool StrictLocale { get; private set; }
-
-        public SanitizedLocaleName DefaultLocale { get; private set; }
-
-        public PhraseAppLocalization(string accessToken, string projectId, TimeSpan ttl)
+        public PhraseAppLocalization(HttpClient client, IOptionsMonitor<PhraseAppOptions> optionsMonitor, ILogger<PhraseAppLocalization> log)
         {
-            if (string.IsNullOrEmpty(accessToken) == true) throw new ArgumentNullException(nameof(accessToken));
-            if (string.IsNullOrEmpty(projectId) == true) throw new ArgumentNullException(nameof(projectId));
-            if (ReferenceEquals(null, ttl) == true) throw new ArgumentNullException(nameof(ttl));
+            this.client = client;
+            this.options = optionsMonitor.CurrentValue;
+            optionsMonitor.OnChange(Changed);
+            this.log = log;
 
-            this.accessToken = accessToken;
-            this.projectId = projectId;
-            this.ttl = ttl;
-
-            client = new RestClient(PhraseAppConstants.BaseUrl);
             translationCachePerLocale = new ConcurrentDictionary<string, ConcurrentDictionary<string, TranslationModel>>();
             localeCache = new ConcurrentDictionary<string, SanitizedPhraseAppLocaleModel>();
             etagPerLocaleCache = new ConcurrentDictionary<string, string>();
 
-            CacheLocales();
-            CacheTranslations();
+            this.jsonSerializerOptions = new JsonSerializerOptions() { PropertyNameCaseInsensitive = true };
+        }
+
+        private void Changed(PhraseAppOptions newOptions)
+        {
+            if (options != newOptions)
+            {
+                options = newOptions;
+                //optionsHasChanged = true;
+            }
         }
 
         /// <summary>
@@ -61,12 +60,12 @@ namespace Localizations.PhraseApp
         /// <param name="key"></param>
         /// <param name="locale"></param>
         /// <returns>Returns translation by key and locale</returns>
-        public SafeGet<TranslationModel> Get(string key, string locale)
+        public async Task<SafeGet<TranslationModel>> GetAsync(string key, string locale)
         {
             if (string.IsNullOrEmpty(key) == true) throw new ArgumentNullException(nameof(key));
             if (string.IsNullOrEmpty(locale) == true) throw new ArgumentNullException(nameof(locale));
 
-            List<SafeGet<TranslationModel>> translations = GetAll(locale);
+            List<SafeGet<TranslationModel>> translations = await GetAllAsync(locale).ConfigureAwait(false);
             SafeGet<TranslationModel> translation = translations.SingleOrDefault(x => x.Result().Key.Equals(key, StringComparison.OrdinalIgnoreCase));
 
             if (translation is null)
@@ -82,24 +81,24 @@ namespace Localizations.PhraseApp
         /// </summary>
         /// <param name="locale"></param>
         /// <returns>Returns all the translations by locale</returns>
-        public List<SafeGet<TranslationModel>> GetAll(string locale)
+        public async Task<List<SafeGet<TranslationModel>>> GetAllAsync(string locale)
         {
             if (string.IsNullOrEmpty(locale) == true) throw new ArgumentNullException(nameof(locale));
             var sanitizedLocaleName = new SanitizedLocaleName(locale);
 
-            CacheLocalesAndTranslations();
+            await CacheLocalesAndTranslationsAsync().ConfigureAwait(false);
 
             if (translationCachePerLocale.TryGetValue(sanitizedLocaleName, out ConcurrentDictionary<string, TranslationModel> translationsForLocale))
                 return new List<SafeGet<TranslationModel>>(translationsForLocale.Values.Select(x => new SafeGet<TranslationModel>(x)));
 
-            if (StrictLocale == false && sanitizedLocaleName.Value.Contains(SanitizedLocaleName.LocaleSeparator) == true)
+            if (options.UseStrictLocale == false && sanitizedLocaleName.Value.Contains(SanitizedLocaleName.LocaleSeparator) == true)
             {
                 var next = sanitizedLocaleName.Value.Remove(sanitizedLocaleName.Value.LastIndexOf(SanitizedLocaleName.LocaleSeparator));
-                return GetAll(next);
+                return await GetAllAsync(next).ConfigureAwait(false);
             }
 
             if (ShouldFallbackToDefaultLocale(sanitizedLocaleName))
-                return GetAll(DefaultLocale);
+                return await GetAllAsync(options.DefaultLocale).ConfigureAwait(false);
 
             return new List<SafeGet<TranslationModel>>();
         }
@@ -112,20 +111,20 @@ namespace Localizations.PhraseApp
         /// <param name="key">The translation key.</param>
         /// <param name="header">The Accept-Language header that will be used to get the translation.</param>
         /// <returns>The resulting translation for this <paramref name="header"/>. If no translation is not found for this <paramref name="header"/> the result will be "missing-key-'{<paramref name="key"/>}'".</returns>
-        public SafeGet<TranslationModel> Get(string key, AcceptLanguageHeader header)
+        public async Task<SafeGet<TranslationModel>> GetAsync(string key, AcceptLanguageHeader header)
         {
             if (string.IsNullOrEmpty(key) == true) throw new ArgumentNullException(nameof(key));
             if (header is null) throw new ArgumentNullException(nameof(header));
 
             foreach (var locale in header.Locales)
             {
-                var translationModel = Get(key, locale);
+                var translationModel = await GetAsync(key, locale).ConfigureAwait(false);
                 if (translationModel.Found)
                     return translationModel;
             }
 
             if (ShouldFallbackToDefaultLocale(header))
-                return Get(key, DefaultLocale);
+                return await GetAsync(key, options.DefaultLocale).ConfigureAwait(false);
 
             return SafeGet<TranslationModel>.NotFound;
         }
@@ -137,43 +136,21 @@ namespace Localizations.PhraseApp
         /// </summary>
         /// <param name="header">>The Accept-Language header that will be used to get the translation.</param>
         /// <returns>The resulting translations for this <paramref name="header"/>. If no translations are not found for this <paramref name="header"/> the collection will be empty.</returns>
-        public List<SafeGet<TranslationModel>> GetAll(AcceptLanguageHeader header)
+        public async Task<List<SafeGet<TranslationModel>>> GetAllAsync(AcceptLanguageHeader header)
         {
             if (header is null) throw new ArgumentNullException(nameof(header));
 
             foreach (var locale in header.Locales)
             {
-                var translations = GetAll(locale);
+                var translations = await GetAllAsync(locale).ConfigureAwait(false);
                 if (translations.Count > 0)
                     return translations;
             }
 
             if (ShouldFallbackToDefaultLocale(header))
-                return GetAll(DefaultLocale);
+                return await GetAllAsync(options.DefaultLocale).ConfigureAwait(false);
 
             return new List<SafeGet<TranslationModel>>();
-        }
-
-        /// <summary>
-        /// Specifies if fall back to two letter part of locale is allowed e.g en-GB would fall back to en
-        /// </summary>
-        /// <param name="value"></param>
-        /// <returns></returns>
-        public PhraseAppLocalization UseStrictLocale(bool value)
-        {
-            StrictLocale = value;
-            return this;
-        }
-
-        /// <summary>
-        /// Specifies default fall back locale
-        /// </summary>
-        /// <param name="locale"></param>
-        /// <returns></returns>
-        public PhraseAppLocalization UseDefaultLocale(string locale)
-        {
-            DefaultLocale = new SanitizedLocaleName(locale);
-            return this;
         }
 
         /// <summary>
@@ -185,7 +162,7 @@ namespace Localizations.PhraseApp
         /// <returns></returns>
         bool ShouldFallbackToDefaultLocale(AcceptLanguageHeader header)
         {
-            return string.IsNullOrEmpty(DefaultLocale) == false && header.Locales.Any(x => x.Equals(DefaultLocale, StringComparison.OrdinalIgnoreCase)) == false;
+            return string.IsNullOrEmpty(options.DefaultLocale) == false && header.Locales.Any(x => x.Equals(options.DefaultLocale, StringComparison.OrdinalIgnoreCase)) == false;
         }
 
         /// <summary>
@@ -197,36 +174,39 @@ namespace Localizations.PhraseApp
         /// <returns></returns>
         bool ShouldFallbackToDefaultLocale(string currentLocale)
         {
-            return string.IsNullOrEmpty(DefaultLocale) == false && DefaultLocale.Value.Equals(currentLocale, StringComparison.OrdinalIgnoreCase) == false;
+            return string.IsNullOrEmpty(options.DefaultLocale) == false && options.DefaultLocale.Equals(currentLocale, StringComparison.OrdinalIgnoreCase) == false;
         }
 
-        void CacheTranslations()
+        async Task CacheTranslationsAsync()
         {
             foreach (var sanitizedLocale in localeCache.Values)
             {
-                var resource = $"projects/{projectId}/locales/{sanitizedLocale.Id}/download?file_format=simple_json";
-                IRestResponse<Dictionary<string, string>> response = null;
+                var resource = $"projects/{options.ProjectId}/locales/{sanitizedLocale.Id}/download?file_format=simple_json";
+                //IRestResponse<Dictionary<string, string>> response = null;
+                HttpResponseMessage response = null;
 
                 if (etagPerLocaleCache.TryGetValue(sanitizedLocale.Name, out string currentLocaleEtag))
-                    response = client.Execute<Dictionary<string, string>>(CreateRestRequest(resource, Method.GET, currentLocaleEtag));
+                    //response = client.Execute<Dictionary<string, string>>(CreateRestRequest(resource, Method.GET, currentLocaleEtag));
+                    response = await client.SendAsync(CreateRestRequest(resource, HttpMethod.Get, currentLocaleEtag)).ConfigureAwait(false);
                 else
-                    response = client.Execute<Dictionary<string, string>>(CreateRestRequest(resource, Method.GET));
+                    //response = client.Execute<Dictionary<string, string>>(CreateRestRequest(resource, Method.GET));
+                    response = await client.SendAsync(CreateRestRequest(resource, HttpMethod.Get)).ConfigureAwait(false);
 
                 if (response is null)
                 {
-                    log.Warn(() => $"Initialization for locale {sanitizedLocale.Name} with id {sanitizedLocale.Id} failed. Response was null");
+                    log.LogWarning($"Initialization for locale {sanitizedLocale.Name} with id {sanitizedLocale.Id} failed. Response was null");
                     continue;
                 }
 
-                if (response.ResponseStatus != ResponseStatus.Completed)
+                if (response.IsSuccessStatusCode == false)
                 {
-                    log.Warn(() => $"Initialization for locale {sanitizedLocale.Name} with id {sanitizedLocale.Id} failed. Response status was {response.ResponseStatus}");
+                    log.LogWarning($"Initialization for locale {sanitizedLocale.Name} with id {sanitizedLocale.Id} failed. Response status was {response.StatusCode}");
                     continue;
                 }
 
                 if (response.StatusCode == System.Net.HttpStatusCode.Unauthorized)
                 {
-                    log.Error(() => $"Initialization for locale {sanitizedLocale.Name} with id {sanitizedLocale.Id} failed. Response status code is Unauthorized");
+                    log.LogError($"Initialization for locale {sanitizedLocale.Name} with id {sanitizedLocale.Id} failed. Response status code is Unauthorized");
                     break;
                 }
 
@@ -235,9 +215,12 @@ namespace Localizations.PhraseApp
 
                 if (response.StatusCode == System.Net.HttpStatusCode.OK)
                 {
+                    string json = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
+                    Dictionary<string, string> data = JsonSerializer.Deserialize<Dictionary<string, string>>(json, jsonSerializerOptions);
+
                     var cacheForSpecificLocale = new ConcurrentDictionary<string, TranslationModel>();
                     var lastModified = GetLastModifiedFromHeadersAsFileTimeUtc(response);
-                    foreach (var translation in response.Data)
+                    foreach (var translation in data)
                     {
                         var model = new TranslationModel(translation.Key, translation.Value, sanitizedLocale.Name.Value, lastModified);
                         cacheForSpecificLocale.AddOrUpdate(translation.Key, model, (k, v) => model);
@@ -249,28 +232,29 @@ namespace Localizations.PhraseApp
                     translationCachePerLocale.AddOrUpdate(sanitizedLocale.Name, cacheForSpecificLocale, (k, v) => cacheForSpecificLocale);
                 }
 
-                log.Warn(() => $"Initialization for locale {sanitizedLocale.Name} with id {sanitizedLocale.Id} failed.");
+                log.LogWarning($"Initialization for locale {sanitizedLocale.Name} with id {sanitizedLocale.Id} failed.");
             }
 
-            nextCheckForChanges = DateTime.UtcNow.Add(ttl);
+            nextCheckForChanges = DateTime.UtcNow.AddMinutes(options.TtlInMinutes);
         }
 
-        void CacheLocales()
+        public async Task CacheLocalesAsync()
         {
-            var resource = $"projects/{projectId}/locales";
-            var request = CreateRestRequest(resource, Method.GET, localesEtag);
+            var resource = $"projects/{options.ProjectId}/locales";
+            var request = CreateRestRequest(resource, HttpMethod.Get, localesEtag);
 
-            var response = client.Execute<List<PhraseAppLocaleModel>>(request);
+            // var response = client.Execute<List<PhraseAppLocaleModel>>(request);
+            var response = await client.SendAsync(request).ConfigureAwait(false);
 
             if (response is null)
             {
-                log.Warn(() => $"Unable to load locales for project {projectId}");
+                log.LogWarning($"Unable to load locales for project {options.ProjectId}");
                 return;
             }
 
-            if (response.ResponseStatus != ResponseStatus.Completed)
+            if (response.IsSuccessStatusCode == false)
             {
-                log.Warn(() => $"Initialization locales for project {projectId} failed. Response status was {response.ResponseStatus}");
+                log.LogWarning($"Initialization locales for project {options.ProjectId} failed. Response status was {response.StatusCode}");
                 return;
             }
 
@@ -278,7 +262,7 @@ namespace Localizations.PhraseApp
 
             if (response.StatusCode == System.Net.HttpStatusCode.Unauthorized)
             {
-                log.Error(() => $"Unable to load locales for project {projectId}. Response status code is Unauthorized.");
+                log.LogError($"Unable to load locales for project {options.ProjectId}. Response status code is Unauthorized.");
                 return;
             }
 
@@ -290,7 +274,10 @@ namespace Localizations.PhraseApp
                 if (TryGetEtagValueFromHeaders(response, out string etag))
                     localesEtag = etag;
 
-                foreach (PhraseAppLocaleModel locale in response.Data)
+                string json = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
+                List<PhraseAppLocaleModel> data = JsonSerializer.Deserialize<List<PhraseAppLocaleModel>>(json, jsonSerializerOptions);
+
+                foreach (PhraseAppLocaleModel locale in data)
                 {
                     var sanitizedLocale = new SanitizedPhraseAppLocaleModel(locale.Id, new SanitizedLocaleName(locale.Name));
                     localeCache.AddOrUpdate(sanitizedLocale.Id, sanitizedLocale, (k, v) => sanitizedLocale);
@@ -299,15 +286,15 @@ namespace Localizations.PhraseApp
                 return;
             }
 
-            log.Warn(() => $"Unable to load locales for project {projectId}. Response status is {response.ResponseStatus}. Response status code is {response.StatusCode}. Error Message: {response.ErrorMessage}");
+            log.LogWarning($"Unable to load locales for project {options.ProjectId}. Response status is {response.StatusCode}. Response status code is {response.StatusCode}. Error Message: {response.ReasonPhrase}");
         }
 
-        void CacheLocalesAndTranslations()
+        public async Task CacheLocalesAndTranslationsAsync()
         {
             if (ShouldCheckForChanges() == true)
             {
-                CacheLocales();
-                CacheTranslations();
+                await CacheLocalesAsync().ConfigureAwait(false);
+                await CacheTranslationsAsync().ConfigureAwait(false);
             }
         }
 
@@ -319,13 +306,13 @@ namespace Localizations.PhraseApp
             return false;
         }
 
-        void CalculateNextRequestTimestamp(IRestResponse response)
+        void CalculateNextRequestTimestamp(HttpResponseMessage response)
         {
             int remainingRequests = GetHeaderValue<int>(response, "X-Rate-Limit-Remaining", 500);
 
             if (remainingRequests == 0)
             {
-                log.Warn("[PhraseApp] Request limit exceeded (X-Rate-Limit-Remaining). https://phraseapp.com/docs/api/v2/#rate-limit");
+                log.LogWarning("[PhraseApp] Request limit exceeded (X-Rate-Limit-Remaining). https://phraseapp.com/docs/api/v2/#rate-limit");
 
                 long headerTimeoutParameter = GetHeaderValue<long>(response, "X-Rate-Limit-Reset");
                 if (headerTimeoutParameter > 0)
@@ -333,10 +320,10 @@ namespace Localizations.PhraseApp
             }
         }
 
-        T GetHeaderValue<T>(IRestResponse response, string headerName, T defaultValue = default(T))
+        T GetHeaderValue<T>(HttpResponseMessage response, string headerName, T defaultValue = default(T))
         {
-            var headerParam = response.Headers.Where(header => header.Name == headerName).SingleOrDefault();
-            if (headerParam is null == false)
+            KeyValuePair<string, IEnumerable<string>> headerParam = response.Headers.Where(header => header.Key == headerName).SingleOrDefault();
+            if (headerParam.Equals(default(KeyValuePair<string, IEnumerable<string>>)) == false)
             {
                 object value = headerParam.Value;
                 var converter = TypeDescriptor.GetConverter(typeof(T));
@@ -358,26 +345,26 @@ namespace Localizations.PhraseApp
             return new DateTime(1970, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc).AddSeconds(epoch);
         }
 
-        bool TryGetEtagValueFromHeaders(IRestResponse response, out string etag)
+        bool TryGetEtagValueFromHeaders(HttpResponseMessage response, out string etag)
         {
             etag = string.Empty;
-            var etagHeader = response.Headers.Where(x => x.Name == "ETag").SingleOrDefault();
-            if (etagHeader is null == false)
+            KeyValuePair<string, IEnumerable<string>> etagHeader = response.Headers.Where(x => x.Key == "ETag").SingleOrDefault();
+            if (etagHeader.Equals(default(KeyValuePair<string, IEnumerable<string>>)) == false)
             {
-                etag = etagHeader.Value.ToString();
+                etag = etagHeader.Value.FirstOrDefault();
                 return true;
             }
 
             return false;
         }
 
-        long GetLastModifiedFromHeadersAsFileTimeUtc(IRestResponse response)
+        long GetLastModifiedFromHeadersAsFileTimeUtc(HttpResponseMessage response)
         {
-            var lastModifiedHeader = response.Headers.Where(x => x.Name == "Last-Modified").SingleOrDefault();
+            KeyValuePair<string, IEnumerable<string>> lastModifiedHeader = response.Headers.Where(x => x.Key == "Last-Modified").SingleOrDefault();
 
-            if (lastModifiedHeader is null == false)
+            if (lastModifiedHeader.Equals(default(KeyValuePair<string, IEnumerable<string>>)) == false)
             {
-                if (DateTime.TryParse(lastModifiedHeader.Value.ToString(), out DateTime d) == true)
+                if (DateTime.TryParse(lastModifiedHeader.Value.FirstOrDefault(), out DateTime d) == true)
                 {
                     return d.ToFileTimeUtc();
                 }
@@ -386,30 +373,26 @@ namespace Localizations.PhraseApp
             return 0;
         }
 
-        IRestRequest CreateRestRequest(string resource, Method method)
+        HttpRequestMessage CreateRestRequest(string resource, HttpMethod method)
         {
             return CreateRestRequest(resource, method, new List<KeyValuePair<string, string>>());
         }
 
-        IRestRequest CreateRestRequest(string resource, Method method, string eTagValue)
+        HttpRequestMessage CreateRestRequest(string resource, HttpMethod method, string eTagValue)
         {
             return CreateRestRequest(resource, method, new List<KeyValuePair<string, string>> { new KeyValuePair<string, string>("If-None-Match", eTagValue) });
         }
 
-        IRestRequest CreateRestRequest(string resource, Method method, List<KeyValuePair<string, string>> headers)
+        HttpRequestMessage CreateRestRequest(string resource, HttpMethod method, List<KeyValuePair<string, string>> headers)
         {
-            var request = new RestRequest(resource, method)
-            {
-                RequestFormat = DataFormat.Json
-            };
-            request.AddHeader("Authorization", $"token {accessToken}");
+            var request = new HttpRequestMessage(method, resource);
 
             foreach (var header in headers)
             {
                 if (string.IsNullOrEmpty(header.Key) == true || string.IsNullOrEmpty(header.Value) == true)
                     continue;
 
-                request.AddHeader(header.Key, header.Value);
+                request.Headers.TryAddWithoutValidation(header.Key, header.Value);
             }
 
             return request;

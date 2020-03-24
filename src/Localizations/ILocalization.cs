@@ -1,15 +1,16 @@
 ﻿using System.Collections.Generic;
+using System.Threading.Tasks;
 
 namespace Localizations
 {
     public interface ILocalization
     {
-        SafeGet<TranslationModel> Get(string key, string locale);
+        Task<SafeGet<TranslationModel>> GetAsync(string key, string locale);
 
-        SafeGet<TranslationModel> Get(string key, AcceptLanguageHeader header);
+        Task<SafeGet<TranslationModel>> GetAsync(string key, AcceptLanguageHeader header);
 
-        List<SafeGet<TranslationModel>> GetAll(string locale);
+        Task<List<SafeGet<TranslationModel>>> GetAllAsync(string locale);
 
-        List<SafeGet<TranslationModel>> GetAll(AcceptLanguageHeader header);
+        Task<List<SafeGet<TranslationModel>>> GetAllAsync(AcceptLanguageHeader header);
     }
 }

@@ -1,8 +1,8 @@
 ﻿using System;
 
-namespace Localizations.PhraseApp
+namespace Localizations.PhraseApp.Internal
 {
-    public class SanitizedLocaleName
+    internal class SanitizedLocaleName
     {
         public static char LocaleSeparator = '-';
 
