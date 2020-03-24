@@ -1,3 +1,6 @@
+#### 1.0.0-beta0009 - 24.03.2020
+* Fixes extensions
+
 #### 1.0.0-beta0008 - 24.03.2020
 * Removes RestSharp
 * Updates to dotnet core 3.1
