@@ -20,8 +20,4 @@ namespace Localizations.PhraseApp
         public bool UseStrictLocale { get; set; }
         public int TtlInMinutes { get; set; }
     }
-
-
-
-
 }

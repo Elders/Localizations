@@ -12,6 +12,7 @@ namespace Localizations.PhraseApp
         {
             services.AddOptions();
             services.AddOption<PhraseAppOptions, PhraseAppOptionsProvider>();
+            services.AddSingleton<PhraseAppLocalizationCache>();// Hey-yo
 
             var options = new PhraseAppOptions();
             configuration.GetSection(PhraseAppOptionsProvider.Section).Bind(options);
@@ -29,6 +30,5 @@ namespace Localizations.PhraseApp
 
             return services;
         }
-
     }
 }

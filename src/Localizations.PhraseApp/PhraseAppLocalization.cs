@@ -16,30 +16,21 @@ namespace Localizations.PhraseApp
     {
         private readonly HttpClient client;
 
-        private readonly ConcurrentDictionary<string, SanitizedPhraseAppLocaleModel> localeCache;
-        private readonly ConcurrentDictionary<string, ConcurrentDictionary<string, TranslationModel>> translationCachePerLocale;
-        private readonly ConcurrentDictionary<string, string> etagPerLocaleCache;
-
         private readonly JsonSerializerOptions jsonSerializerOptions;
 
         private readonly ILogger<PhraseAppLocalization> log;
-
-        private DateTime nextCheckForChanges;
+        private readonly PhraseAppLocalizationCache cache;
         private string localesEtag;
 
         PhraseAppOptions options;
 
-        public PhraseAppLocalization(HttpClient client, IOptionsMonitor<PhraseAppOptions> optionsMonitor, ILogger<PhraseAppLocalization> log)
+        public PhraseAppLocalization(HttpClient client, IOptionsMonitor<PhraseAppOptions> optionsMonitor, ILogger<PhraseAppLocalization> log, PhraseAppLocalizationCache cache)
         {
             this.client = client;
             this.options = optionsMonitor.CurrentValue;
             optionsMonitor.OnChange(Changed);
             this.log = log;
-
-            translationCachePerLocale = new ConcurrentDictionary<string, ConcurrentDictionary<string, TranslationModel>>();
-            localeCache = new ConcurrentDictionary<string, SanitizedPhraseAppLocaleModel>();
-            etagPerLocaleCache = new ConcurrentDictionary<string, string>();
-
+            this.cache = cache;
             this.jsonSerializerOptions = new JsonSerializerOptions() { PropertyNameCaseInsensitive = true };
         }
 
@@ -88,7 +79,7 @@ namespace Localizations.PhraseApp
 
             await CacheLocalesAndTranslationsAsync().ConfigureAwait(false);
 
-            if (translationCachePerLocale.TryGetValue(sanitizedLocaleName, out ConcurrentDictionary<string, TranslationModel> translationsForLocale))
+            if (cache.TranslationCachePerLocale.TryGetValue(sanitizedLocaleName, out ConcurrentDictionary<string, TranslationModel> translationsForLocale))
                 return new List<SafeGet<TranslationModel>>(translationsForLocale.Values.Select(x => new SafeGet<TranslationModel>(x)));
 
             if (options.UseStrictLocale == false && sanitizedLocaleName.Value.Contains(SanitizedLocaleName.LocaleSeparator) == true)
@@ -179,13 +170,13 @@ namespace Localizations.PhraseApp
 
         async Task CacheTranslationsAsync()
         {
-            foreach (var sanitizedLocale in localeCache.Values)
+            foreach (var sanitizedLocale in cache.LocaleCache.Values)
             {
                 var resource = $"projects/{options.ProjectId}/locales/{sanitizedLocale.Id}/download?file_format=simple_json";
                 //IRestResponse<Dictionary<string, string>> response = null;
                 HttpResponseMessage response = null;
 
-                if (etagPerLocaleCache.TryGetValue(sanitizedLocale.Name, out string currentLocaleEtag))
+                if (cache.EtagPerLocaleCache.TryGetValue(sanitizedLocale.Name, out string currentLocaleEtag))
                     //response = client.Execute<Dictionary<string, string>>(CreateRestRequest(resource, Method.GET, currentLocaleEtag));
                     response = await client.SendAsync(CreateRestRequest(resource, HttpMethod.Get, currentLocaleEtag)).ConfigureAwait(false);
                 else
@@ -227,15 +218,15 @@ namespace Localizations.PhraseApp
                     }
 
                     if (TryGetEtagValueFromHeaders(response, out string localeEtagFromHeader))
-                        etagPerLocaleCache.AddOrUpdate(sanitizedLocale.Name, currentLocaleEtag, (k, v) => localeEtagFromHeader);
+                        cache.EtagPerLocaleCache.AddOrUpdate(sanitizedLocale.Name, currentLocaleEtag, (k, v) => localeEtagFromHeader);
 
-                    translationCachePerLocale.AddOrUpdate(sanitizedLocale.Name, cacheForSpecificLocale, (k, v) => cacheForSpecificLocale);
+                    cache.TranslationCachePerLocale.AddOrUpdate(sanitizedLocale.Name, cacheForSpecificLocale, (k, v) => cacheForSpecificLocale);
                 }
 
                 log.LogWarning($"Initialization for locale {sanitizedLocale.Name} with id {sanitizedLocale.Id} failed.");
             }
 
-            nextCheckForChanges = DateTime.UtcNow.AddMinutes(options.TtlInMinutes);
+            cache.NextCheckForChanges = DateTime.UtcNow.AddMinutes(options.TtlInMinutes);
         }
 
         public async Task CacheLocalesAsync()
@@ -280,7 +271,7 @@ namespace Localizations.PhraseApp
                 foreach (PhraseAppLocaleModel locale in data)
                 {
                     var sanitizedLocale = new SanitizedPhraseAppLocaleModel(locale.Id, new SanitizedLocaleName(locale.Name));
-                    localeCache.AddOrUpdate(sanitizedLocale.Id, sanitizedLocale, (k, v) => sanitizedLocale);
+                    cache.LocaleCache.AddOrUpdate(sanitizedLocale.Id, sanitizedLocale, (k, v) => sanitizedLocale);
                 }
 
                 return;
@@ -300,7 +291,7 @@ namespace Localizations.PhraseApp
 
         bool ShouldCheckForChanges()
         {
-            if (nextCheckForChanges < DateTime.UtcNow)
+            if (cache.NextCheckForChanges < DateTime.UtcNow)
                 return true;
 
             return false;
@@ -316,7 +307,7 @@ namespace Localizations.PhraseApp
 
                 long headerTimeoutParameter = GetHeaderValue<long>(response, "X-Rate-Limit-Reset");
                 if (headerTimeoutParameter > 0)
-                    nextCheckForChanges = ConvertTimestampFromParameterToDateTime(headerTimeoutParameter);
+                    cache.NextCheckForChanges = ConvertTimestampFromParameterToDateTime(headerTimeoutParameter);
             }
         }
 
