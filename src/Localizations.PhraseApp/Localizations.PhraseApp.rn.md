@@ -1,3 +1,6 @@
+#### 1.0.0-beta0010 - 03.07.2020
+* Adds Localizations Cache
+
 #### 1.0.0-beta0009 - 24.03.2020
 * Fixes extensions
 
