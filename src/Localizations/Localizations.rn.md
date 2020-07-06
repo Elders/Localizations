@@ -1,3 +1,10 @@
+#### 1.0.0-beta0009 - 06.07.2020
+* Bumps version 
+
+#### 1.0.0-beta0008 - 24.03.2020
+* Removes RestSharp
+* Updates to dotnet core 3.1
+
 #### 1.0.0-beta0007 - 24.03.2020
 * Removes RestSharp
 * Updates to dotnet core 3.1
