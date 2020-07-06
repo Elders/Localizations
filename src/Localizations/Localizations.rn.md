@@ -1,3 +1,6 @@
+#### 1.0.0-beta0010 - 06.07.2020
+* Bumps version 
+
 #### 1.0.0-beta0009 - 06.07.2020
 * Bumps version 
 
