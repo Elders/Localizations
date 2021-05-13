@@ -48,6 +48,10 @@ jobs:
     inputs:
       command: 'build'
       projects: 'src/Localizations/*.csproj'
+  - task: DotNetCoreCLI@2
+    inputs:
+      command: 'build'
+      projects: 'src/Localizations.PhraseApp/*.csproj'
 
 - job: Artifact
   dependsOn: ['Build']
@@ -66,6 +70,13 @@ jobs:
     inputs:
       command: 'pack'
       packagesToPack: 'src/Localizations/*.csproj'
+      versioningScheme: 'off'
+      buildProperties: 'PackageVersion=$(SEMVER)'
+  - task: DotNetCoreCLI@2
+    name: Pack
+    inputs:
+      command: 'pack'
+      packagesToPack: 'src/Localizations.PhraseApp/*.csproj'
       versioningScheme: 'off'
       buildProperties: 'PackageVersion=$(SEMVER)'
 
