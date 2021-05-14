@@ -1,9 +1,11 @@
 ﻿using System;
 
-namespace Localizations.Contracts
+namespace Localizations
 {
     public class SafeGet<T>
     {
+        readonly T result;
+
         SafeGet()
         {
             Found = false;
@@ -17,8 +19,6 @@ namespace Localizations.Contracts
         }
 
         public bool Found { get; private set; }
-
-        T result { get; set; }
 
         public T Result(T defaultValue = default(T))
         {
@@ -34,5 +34,6 @@ namespace Localizations.Contracts
         {
             return $"Found: '{Found}', Result: '{Result()}'";
         }
+
     }
 }

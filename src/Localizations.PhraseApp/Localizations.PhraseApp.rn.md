@@ -1,3 +1,37 @@
+#### 1.0.0-beta0010 - 03.07.2020
+* Adds Localizations Cache
+
+#### 1.0.0-beta0009 - 24.03.2020
+* Fixes extensions
+
+#### 1.0.0-beta0008 - 24.03.2020
+* Removes RestSharp
+* Updates to dotnet core 3.1
+
+#### 1.0.0-beta0007 - 11.07.2018
+* Updates RestSharp
+
+#### 1.0.0-beta0006 - 29.10.2018
+* Fixes issue with lower/upper case locales
+* Starts passing etag when quering translations
+* Code cleanup
+
+#### 1.0.0-beta0005 - 05.10.2018
+* Code cleanup
+
+#### 1.0.0-beta0004 - 01.10.2018
+* Removes code which is not in use
+* Removes some of the project warnings
+
+#### 1.0.0-beta0003 - 01.10.2018
+* Testing builds using correct ghtoken
+
+#### 1.0.0-beta0002 - 30.09.2018
+* Testing builds
+
+#### 1.0.0-beta0001 - 30.09.2018
+* Initial release with netstandard 2.0
+
 #### 0.1.17 - 12.07.2018
 * Update Localizations package to version 0.1.15
 

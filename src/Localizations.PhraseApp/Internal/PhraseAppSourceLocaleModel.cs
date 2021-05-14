@@ -1,6 +1,6 @@
-﻿namespace Localizations.PhraseApp
+﻿namespace Localizations.PhraseApp.Internal
 {
-    public class PhraseAppSourceLocaleModel
+    internal class PhraseAppSourceLocaleModel
     {
         public string Id { get; set; }
 

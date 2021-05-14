@@ -1,10 +1,15 @@
 ﻿using System;
 using System.Collections.Generic;
 
-namespace Localizations.PhraseApp
+namespace Localizations.PhraseApp.Internal
 {
-    public class PhraseAppLocaleModel
+    internal class PhraseAppLocaleModel
     {
+        public PhraseAppLocaleModel()
+        {
+            Plural_forms = new List<string>();
+        }
+
         public string Id { get; set; }
 
         public string Name { get; set; }

@@ -1,3 +1,36 @@
+#### 1.0.0-beta0010 - 06.07.2020
+* Bumps version 
+
+#### 1.0.0-beta0009 - 06.07.2020
+* Bumps version 
+
+#### 1.0.0-beta0008 - 24.03.2020
+* Removes RestSharp
+* Updates to dotnet core 3.1
+
+#### 1.0.0-beta0007 - 24.03.2020
+* Removes RestSharp
+* Updates to dotnet core 3.1
+
+#### 1.0.0-beta0006 - 29.10.2018
+* Release in order not to break the project (don't ask)
+
+#### 1.0.0-beta0005 - 05.10.2018
+* Code cleanup
+
+#### 1.0.0-beta0004 - 01.10.2018
+* Removes code which is not in use
+* Removes some of the project warnings
+
+#### 1.0.0-beta0003 - 01.10.2018
+* Testing builds using correct ghtoken
+
+#### 1.0.0-beta0002 - 30.09.2018
+* Testing builds
+
+#### 1.0.0-beta0001 - 30.09.2018
+* Initial release with netstandard 2.0
+
 #### 0.1.15 - 10.07.2018
 * Fixes supports for Accept-Language header locale quality
 * Exposes new methods for work with Accept-Language header

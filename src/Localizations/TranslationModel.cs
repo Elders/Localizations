@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace Localizations.Contracts
+namespace Localizations
 {
     public class TranslationModel
     {
