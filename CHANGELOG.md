@@ -1,3 +1,10 @@
+## [1.1.2](https://github.com/Elders/Localizations/compare/v1.1.1...v1.1.2) (2022-09-15)
+
+
+### Bug Fixes
+
+* Fixes potential problem with regex mem leak ([d130b75](https://github.com/Elders/Localizations/commit/d130b75100ddec6bc436a9e729fc3fb2ff14cf39))
+
 ## [1.1.2-preview.1](https://github.com/Elders/Localizations/compare/v1.1.1...v1.1.2-preview.1) (2022-09-15)
 
 
