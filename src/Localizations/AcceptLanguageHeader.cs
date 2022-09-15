@@ -5,32 +5,31 @@ using System.Text.RegularExpressions;
 
 namespace Localizations
 {
-    public class AcceptLanguageHeader
+    public sealed class AcceptLanguageHeader
     {
+        private const string RegexGroup_locale = "locale";
+        private const string RegexGroup_quality = "quality";
+        private static readonly Regex HeaderRegex = new Regex(@"(?'locale'[a-z]{1,8}(-[a-z]{1,8})?)\s*(;\s*q\s*=\s*(?'quality'1|0\.[0-9]+))?", RegexOptions.IgnoreCase);
+
         public ReadOnlyCollection<string> Locales { get; private set; }
 
         public AcceptLanguageHeader(string header)
         {
-            var regex = new Regex(@"(?'locale'[a-z]{1,8}(-[a-z]{1,8})?)\s*(;\s*q\s*=\s*(?'quality'1|0\.[0-9]+))?", RegexOptions.IgnoreCase);
-
-            var matchCollection = regex.Matches(header);
+            MatchCollection matchCollection = HeaderRegex.Matches(header);
 
             var locales = new List<KeyValuePair<string, decimal>>();
 
             foreach (Match match in matchCollection)
             {
-                var localeGroup = match.Groups["locale"];
+                var localeGroup = match.Groups[RegexGroup_locale];
                 if (localeGroup.Success)
                 {
-                    var locale = localeGroup.Value;
-                    var quality = 1m;
+                    string locale = localeGroup.Value;
+                    decimal quality = 1m;
 
-                    var qualityGroup = match.Groups["quality"];
-
+                    Group qualityGroup = match.Groups[RegexGroup_quality];
                     if (qualityGroup.Success)
-                    {
                         decimal.TryParse(qualityGroup.Value, out quality);
-                    }
 
                     locales.Add(new KeyValuePair<string, decimal>(locale, quality));
                 }
