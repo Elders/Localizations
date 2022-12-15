@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 
@@ -18,12 +19,19 @@ namespace Localizations
         /// <returns>The resulting translation.</returns>
         public static async Task<string> GetValueAsync(this ILocalization localization, string key, AcceptLanguageHeader header, string fallbackValue)
         {
+            if (string.IsNullOrEmpty(key)) throw new ArgumentNullException(nameof(key));
+            if (header is null) throw new ArgumentNullException(nameof(header));
+
             string result = fallbackValue;
 
-            var translation = await localization.GetAsync(key, header).ConfigureAwait(false);
+            try
+            {
+                var translation = await localization.GetAsync(key, header).ConfigureAwait(false);
 
-            if (translation.Found == true)
-                result = translation.Result().Value;
+                if (translation.Found == true)
+                    result = translation.Result().Value;
+            }
+            finally { }
 
             return result;
         }
@@ -40,12 +48,19 @@ namespace Localizations
         /// <returns>The resulting translation.</returns>
         public static async Task<string> GetValueAsync(this ILocalization localization, string key, string locale, string fallbackValue)
         {
+            if (string.IsNullOrEmpty(key)) throw new ArgumentNullException(nameof(key));
+            if (string.IsNullOrEmpty(locale)) throw new ArgumentNullException(nameof(locale));
+
             string result = fallbackValue;
 
-            var translation = await localization.GetAsync(key, locale).ConfigureAwait(false);
+            try
+            {
+                var translation = await localization.GetAsync(key, locale).ConfigureAwait(false);
 
-            if (translation.Found == true)
-                result = translation.Result().Value;
+                if (translation.Found == true)
+                    result = translation.Result().Value;
+            }
+            finally { }
 
             return result;
         }
