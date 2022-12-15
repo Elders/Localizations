@@ -1,3 +1,10 @@
+## [2.0.1](https://github.com/Elders/Localizations/compare/v2.0.0...v2.0.1) (2022-12-15)
+
+
+### Bug Fixes
+
+* Makes all GetValueAsync methods exception free when all required parameters are provided ([d841b4f](https://github.com/Elders/Localizations/commit/d841b4f8faee5138b8438a1e66d04b47921f9654))
+
 # [2.0.0](https://github.com/Elders/Localizations/compare/v1.1.2...v2.0.0) (2022-09-15)
 
 ## [1.1.2](https://github.com/Elders/Localizations/compare/v1.1.1...v1.1.2) (2022-09-15)
