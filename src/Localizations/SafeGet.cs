@@ -34,6 +34,5 @@ namespace Localizations
         {
             return $"Found: '{Found}', Result: '{Result()}'";
         }
-
     }
 }
