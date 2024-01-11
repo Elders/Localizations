@@ -23,7 +23,7 @@ jobs:
     displayName: 'Use .NET 8 Core sdk'
     inputs:
       packageType: sdk
-      version: 8.x.x
+      version: 8.x
       installationPath: $(Agent.ToolsDirectory)/dotnet
       
   - task: DotNetCoreCLI@2
